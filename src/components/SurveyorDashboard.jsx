@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -102,12 +102,19 @@ function DistributionTable({ title, rows, type }) {
   );
 }
 
+const SkeletonText = ({ width = '100%', className = '' }) => (
+  <span className={`skeleton-line ${className}`} style={{ width }} aria-hidden="true" />
+);
+
+const dashboardSkeletonRows = Array.from({ length: 5 }, (_, index) => index);
+
 export default function SurveyorDashboard({
   beneficiaries,
   currentUser,
   onSelectBeneficiary,
   showOverview = true,
-  showQueue = true
+  showQueue = true,
+  loading = false
 }) {
   const [search, setSearch] = useState('');
   const [blockFilter, setBlockFilter] = useState('');
@@ -118,15 +125,17 @@ export default function SurveyorDashboard({
   const [summaryFocus, setSummaryFocus] = useState('all');
 
   const currentUserId = String(currentUser?.id || '').trim();
-  const userAssignedList = currentUserId
-    ? beneficiaries.filter((b) => String(b.assignedSurveyorId || '').trim() === currentUserId)
-    : [];
-  const assignedList = currentUserId && userAssignedList.length ? userAssignedList : beneficiaries;
-  const blockOptions = [...new Set(assignedList.map((b) => b.block).filter(Boolean))];
-  const gpOptions = [...new Set(assignedList.filter((b) => !blockFilter || b.block === blockFilter).map((b) => b.gp).filter(Boolean))];
-  const villageOptions = [...new Set(assignedList.filter((b) => (!blockFilter || b.block === blockFilter) && (!gpFilter || b.gp === gpFilter)).map((b) => b.village).filter(Boolean))];
+  const assignedList = useMemo(() => {
+    const userAssignedList = currentUserId
+      ? beneficiaries.filter((b) => String(b.assignedSurveyorId || '').trim() === currentUserId)
+      : [];
+    return currentUserId && userAssignedList.length ? userAssignedList : beneficiaries;
+  }, [beneficiaries, currentUserId]);
+  const blockOptions = useMemo(() => [...new Set(assignedList.map((b) => b.block).filter(Boolean))], [assignedList]);
+  const gpOptions = useMemo(() => [...new Set(assignedList.filter((b) => !blockFilter || b.block === blockFilter).map((b) => b.gp).filter(Boolean))], [assignedList, blockFilter]);
+  const villageOptions = useMemo(() => [...new Set(assignedList.filter((b) => (!blockFilter || b.block === blockFilter) && (!gpFilter || b.gp === gpFilter)).map((b) => b.village).filter(Boolean))], [assignedList, blockFilter, gpFilter]);
 
-  const filteredList = assignedList.filter((b) => {
+  const filteredList = useMemo(() => assignedList.filter((b) => {
     const query = search.toLowerCase();
     const matchesSearch =
       String(b.name || '').toLowerCase().includes(query) ||
@@ -143,7 +152,7 @@ export default function SurveyorDashboard({
     const matchesGender = !genderFilter || b.gender === genderFilter;
 
     return matchesSearch && matchesBlock && matchesGp && matchesVillage && matchesStatus && matchesGender;
-  });
+  }), [assignedList, search, blockFilter, gpFilter, villageFilter, statusFilter, genderFilter]);
 
   const totalAssigned = assignedList.length;
   const completed = assignedList.filter((b) => b.status === 'Completed').length;
@@ -296,7 +305,7 @@ export default function SurveyorDashboard({
               </div>
               <div className="dashboard-overview-badge">
                 <span className="dashboard-overview-dot" />
-                <span>{completionRate}% Progress</span>
+                <span>{loading ? <SkeletonText width="82px" /> : `${completionRate}% Progress`}</span>
               </div>
             </div>
           </section>
@@ -322,8 +331,12 @@ export default function SurveyorDashboard({
                   </div>
                   <div className="dashboard-summary-content">
                     <div className="dashboard-summary-label">{card.label}</div>
-                    <div className="dashboard-summary-value">{card.value}</div>
-                    <div className="dashboard-summary-helper">{card.helper}</div>
+                    <div className="dashboard-summary-value">
+                      {loading ? <SkeletonText width="58px" className="skeleton-value" /> : card.value}
+                    </div>
+                    <div className="dashboard-summary-helper">
+                      {loading ? <SkeletonText width="92px" /> : card.helper}
+                    </div>
                   </div>
                 </button>
               );
@@ -334,26 +347,26 @@ export default function SurveyorDashboard({
             <div className="dashboard-progress-panel panel-card">
               <div className="dashboard-panel-header">
                 <div className="dashboard-panel-title">Survey Progress</div>
-                <div className="dashboard-panel-value">{completionRate}%</div>
+                <div className="dashboard-panel-value">{loading ? <SkeletonText width="42px" /> : `${completionRate}%`}</div>
               </div>
 
               <div className="dashboard-metric-mini-grid">
                 <div className="dashboard-mini-metric">
                   <div className="dashboard-mini-label">Total Survey</div>
-                  <div className="dashboard-mini-value">{totalAssigned}</div>
+                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : totalAssigned}</div>
                 </div>
                 <div className="dashboard-mini-metric">
                   <div className="dashboard-mini-label">Completed</div>
-                  <div className="dashboard-mini-value">{completed}</div>
+                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : completed}</div>
                 </div>
                 <div className="dashboard-mini-metric">
                   <div className="dashboard-mini-label">Pending</div>
-                  <div className="dashboard-mini-value">{pending}</div>
+                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : pending}</div>
                 </div>
               </div>
 
               <div className="dashboard-progress-bar">
-                <div className="dashboard-progress-fill" style={{ width: `${completionRate}%` }} />
+                <div className="dashboard-progress-fill" style={{ width: loading ? '36%' : `${completionRate}%` }} />
               </div>
             </div>
           </section>
@@ -362,7 +375,7 @@ export default function SurveyorDashboard({
             <div className="dashboard-panel-title" style={{ marginBottom: '0.9rem', fontSize: '1.05rem' }}>आधार / राशन / मोबाइल डेटा (भरे हुए रिकॉर्ड में)</div>
 
             <div style={{ display: 'grid', gap: '0.8rem' }}>
-              {aadhaarTypeStats.map((stat) => (
+              {aadhaarTypeStats.map((stat, index) => (
                 <div key={stat.label} className="dashboard-data-row" style={{ display: 'grid', gridTemplateColumns: '180px minmax(180px, 1fr) 60px', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.96rem' }}>{stat.label}</div>
                   <div style={{ position: 'relative', height: '32px', borderRadius: '10px', overflow: 'hidden', background: '#e5e7eb' }}>
@@ -370,7 +383,7 @@ export default function SurveyorDashboard({
                       style={{
                         position: 'absolute',
                         inset: 0,
-                        width: `${(stat.value / maxAadhaarTypeValue) * 100}%`,
+                        width: loading ? `${45 + (index % 3) * 14}%` : `${(stat.value / maxAadhaarTypeValue) * 100}%`,
                         background: stat.color,
                         borderRadius: '10px',
                         display: 'flex',
@@ -382,11 +395,11 @@ export default function SurveyorDashboard({
                         fontSize: '0.9rem'
                       }}
                     >
-                      {stat.value.toLocaleString('en-IN')}
+                      {loading ? '' : stat.value.toLocaleString('en-IN')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', fontWeight: 700, color: '#334155', fontSize: '0.96rem' }}>
-                    {stat.value.toLocaleString('en-IN')}
+                    {loading ? <SkeletonText width="36px" /> : stat.value.toLocaleString('en-IN')}
                   </div>
                 </div>
               ))}
@@ -406,7 +419,14 @@ export default function SurveyorDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {locationTableRows.map((row) => (
+                  {loading ? dashboardSkeletonRows.map((row) => (
+                    <tr key={`block-skeleton-${row}`}>
+                      <td data-label="Block"><SkeletonText width="120px" /></td>
+                      <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
+                    </tr>
+                  )) : locationTableRows.map((row) => (
                     <tr key={row.block}>
                       <td data-label="Block">{row.block}</td>
                       <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
@@ -436,7 +456,15 @@ export default function SurveyorDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {gpTableRows.map((row) => (
+                  {loading ? dashboardSkeletonRows.map((row) => (
+                    <tr key={`gp-skeleton-${row}`}>
+                      <td data-label="Gram Panchayat" className="dashboard-beneficiary-name"><SkeletonText width="150px" /></td>
+                      <td data-label="Block"><SkeletonText width="110px" /></td>
+                      <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
+                    </tr>
+                  )) : gpTableRows.map((row) => (
                     <tr key={row.gp}>
                       <td data-label="Gram Panchayat" className="dashboard-beneficiary-name">{row.gp}</td>
                       <td data-label="Block">{row.block}</td>
@@ -527,7 +555,28 @@ export default function SurveyorDashboard({
                 </tr>
               </thead>
               <tbody>
-                {filteredList.length === 0 ? (
+                {loading ? (
+                  dashboardSkeletonRows.map((row) => (
+                    <tr key={`member-skeleton-${row}`}>
+                      <td data-label="No."><SkeletonText width="24px" /></td>
+                      <td data-label="Block"><SkeletonText width="92px" /></td>
+                      <td data-label="Gram Panchayat"><SkeletonText width="140px" /></td>
+                      <td data-label="Village"><SkeletonText width="112px" /></td>
+                      <td data-label="Guardian">
+                        <div className="guardian-cell">
+                          <SkeletonText width="160px" />
+                          <SkeletonText width="190px" />
+                        </div>
+                      </td>
+                      <td data-label="Member" className="member-name"><SkeletonText width="130px" /></td>
+                      <td data-label="Gender / Age"><SkeletonText width="82px" /></td>
+                      <td data-label="Status"><SkeletonText width="74px" className="skeleton-pill" /></td>
+                      <td data-label="Time"><SkeletonText width="42px" /></td>
+                      <td data-label="Call"><SkeletonText width="54px" /></td>
+                      <td data-label="Action"><SkeletonText width="72px" /></td>
+                    </tr>
+                  ))
+                ) : filteredList.length === 0 ? (
                   <tr>
                     <td colSpan="11" className="empty-state">
                       चयनित फिल्टर में कोई सदस्य नहीं मिला।

@@ -1,23 +1,36 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BarChart3, Home, Moon, ShieldCheck, SunMedium, Users } from 'lucide-react';
 
 import { appConfig } from './config';
-import { getBootstrapData, saveSurvey } from './services/appsScriptApi';
+import { getBootstrapData, readCachedBootstrapData, saveSurvey } from './services/appsScriptApi';
 import ReportsDashboard from './components/ReportsDashboard';
 import SurveyorDashboard from './components/SurveyorDashboard';
 import SurveyWizard from './components/SurveyWizard';
 
 export default function App() {
+  const [cachedBootstrapData] = useState(() => readCachedBootstrapData());
   const [theme, setTheme] = useState(appConfig.defaultTheme);
   const [currentUser] = useState(appConfig.currentUser);
   const [activeView, setActiveView] = useState('dashboard');
 
-  const [beneficiaries, setBeneficiaries] = useState([]);
-  const [parameters, setParameters] = useState([]);
-  const [issueTypes, setIssueTypes] = useState([]);
+  const [beneficiaries, setBeneficiaries] = useState(
+    Array.isArray(cachedBootstrapData?.beneficiaries) ? cachedBootstrapData.beneficiaries : []
+  );
+  const [parameters, setParameters] = useState(
+    Array.isArray(cachedBootstrapData?.parameters) ? cachedBootstrapData.parameters : []
+  );
+  const [issueTypes, setIssueTypes] = useState(
+    Array.isArray(cachedBootstrapData?.issues) ? cachedBootstrapData.issues : []
+  );
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const hasBootstrapData = beneficiaries.length > 0 || parameters.length > 0 || issueTypes.length > 0;
+  const hasBootstrapDataRef = useRef(hasBootstrapData);
+
+  useEffect(() => {
+    hasBootstrapDataRef.current = hasBootstrapData;
+  }, [hasBootstrapData]);
 
   const loadBootstrapData = useCallback(async ({ showLoading = true } = {}) => {
     if (showLoading) setLoading(true);
@@ -30,9 +43,11 @@ export default function App() {
       setIssueTypes(Array.isArray(data?.issues) ? data.issues : []);
     } catch (error) {
       console.error('Bootstrap API failed:', error);
-      setBeneficiaries([]);
-      setParameters([]);
-      setIssueTypes([]);
+      if (!hasBootstrapDataRef.current) {
+        setBeneficiaries([]);
+        setParameters([]);
+        setIssueTypes([]);
+      }
       setLoadError(error instanceof Error && error.message
         ? `डेटा लोड नहीं हो सका: ${error.message}`
         : 'डेटा लोड नहीं हो सका। कृपया backend/API connection check करें।');
@@ -105,7 +120,7 @@ export default function App() {
   };
 
   const renderDataState = () => {
-    if (loading) {
+    if (loading && loadError === '__legacy_loading_panel__') {
       return (
         <div className="data-state-panel empty-state-table loading-state">
           <span className="loading-spinner" aria-hidden="true" />
@@ -114,11 +129,11 @@ export default function App() {
       );
     }
 
-    if (loadError) {
+    if (loadError && !hasBootstrapData) {
       return <div className="data-state-panel empty-state-table">{loadError}</div>;
     }
 
-    if (beneficiaries.length === 0) {
+    if (!loading && beneficiaries.length === 0) {
       return <div className="empty-state-table">कोई रिकॉर्ड नहीं मिला।</div>;
     }
 
@@ -302,6 +317,7 @@ export default function App() {
                     onSelectBeneficiary={handleSelectBeneficiary}
                     showOverview={true}
                     showQueue={false}
+                    loading={loading && !hasBootstrapData}
                   />
                 </div>
               )}
@@ -314,6 +330,7 @@ export default function App() {
                     onSelectBeneficiary={handleSelectBeneficiary}
                     showOverview={false}
                     showQueue={true}
+                    loading={loading && !hasBootstrapData}
                   />
                 </div>
               )}
@@ -324,6 +341,7 @@ export default function App() {
                     beneficiaries={beneficiaries}
                     currentUser={currentUser}
                     issueTypes={issueTypes}
+                    loading={loading && !hasBootstrapData}
                   />
                 </div>
               )}

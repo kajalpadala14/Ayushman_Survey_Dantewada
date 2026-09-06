@@ -30,6 +30,12 @@ const TAB_KEY_MAP = {
   'Date-wise Report': 'date'
 };
 
+const SkeletonText = ({ width = '100%', className = '' }) => (
+  <span className={`skeleton-line ${className}`} style={{ width }} aria-hidden="true" />
+);
+
+const reportSkeletonRows = Array.from({ length: 8 }, (_, index) => index);
+
 const formatDate = (value) => {
   if (!value) return '-';
   const date = new Date(value);
@@ -145,7 +151,7 @@ const buildTableRows = (beneficiaries, activeTab) => {
   }));
 };
 
-export default function ReportsDashboard({ beneficiaries, currentUser, issueTypes = [] }) {
+export default function ReportsDashboard({ beneficiaries, currentUser, issueTypes = [], loading = false }) {
   const [activeTab, setActiveTab] = useState('Survey Report');
   const [search, setSearch] = useState('');
   const [janpadFilter, setJanpadFilter] = useState('');
@@ -470,8 +476,12 @@ export default function ReportsDashboard({ beneficiaries, currentUser, issueType
         {summaryCards.map((card) => (
           <div key={card.key} className={`report-kpi-card ${card.tone}`}>
             <div className="report-kpi-label">{card.label}</div>
-            <div className="report-kpi-value">{card.value}</div>
-            <div className="report-kpi-helper">{card.helper}</div>
+            <div className="report-kpi-value">
+              {loading ? <SkeletonText width="58px" className="skeleton-value" /> : card.value}
+            </div>
+            <div className="report-kpi-helper">
+              {loading ? <SkeletonText width="112px" /> : card.helper}
+            </div>
           </div>
         ))}
       </div>
@@ -585,7 +595,7 @@ export default function ReportsDashboard({ beneficiaries, currentUser, issueType
         <div className="report-table-header">
           <div>
             <h3>{activeTab}</h3>
-            <span>{reportRows.length} records</span>
+            <span>{loading ? <SkeletonText width="78px" /> : `${reportRows.length} records`}</span>
           </div>
         </div>
 
@@ -599,7 +609,17 @@ export default function ReportsDashboard({ beneficiaries, currentUser, issueType
               </tr>
             </thead>
             <tbody>
-              {paginatedRows.length === 0 ? (
+              {loading ? (
+                reportSkeletonRows.map((row) => (
+                  <tr key={`report-skeleton-${row}`}>
+                    {tableHeaders.map((header, index) => (
+                      <td key={`report-skeleton-${row}-${header}`} data-label={header}>
+                        <SkeletonText width={index === 1 ? '140px' : index === 0 ? '70px' : '96px'} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : paginatedRows.length === 0 ? (
                 <tr>
                   <td colSpan={tableHeaders.length} className="empty-state-table">No records found for this filter.</td>
                 </tr>

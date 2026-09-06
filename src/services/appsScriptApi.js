@@ -1,5 +1,36 @@
 import { appConfig } from '../config';
 
+const BOOTSTRAP_CACHE_KEY = 'dnt-bootstrap-cache-v1';
+const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+let bootstrapRequest = null;
+
+export function readCachedBootstrapData() {
+  try {
+    const cached = window.localStorage.getItem(BOOTSTRAP_CACHE_KEY);
+    if (!cached) return null;
+
+    const payload = JSON.parse(cached);
+    if (!payload?.data || Date.now() - Number(payload.savedAt || 0) > BOOTSTRAP_CACHE_TTL_MS) {
+      return null;
+    }
+
+    return payload.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedBootstrapData(data) {
+  try {
+    window.localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({
+      data,
+      savedAt: Date.now()
+    }));
+  } catch {
+    // localStorage can be unavailable in private or constrained browser contexts.
+  }
+}
+
 async function request(params, options = {}) {
   if (!appConfig.appsScriptUrl) {
     throw new Error('Missing VITE_APPS_SCRIPT_URL.');
@@ -24,8 +55,6 @@ async function request(params, options = {}) {
       }
     });
 
-    console.log('API URL:', url.toString());
-
     let response;
     try {
       response = await fetch(url.toString(), {
@@ -43,9 +72,7 @@ async function request(params, options = {}) {
       throw new Error(`Backend connection failed: ${error?.message || 'Network error'}`);
     }
 
-    console.log('HTTP STATUS:', response.status);
     const rawText = await response.text();
-    console.log('RAW API RESPONSE:', rawText);
     let payload = null;
 
     if (rawText) {
@@ -55,10 +82,6 @@ async function request(params, options = {}) {
         payload = { ok: false, error: rawText };
       }
     }
-
-    console.log('PARSED API RESPONSE:', payload);
-    console.log('BENEFICIARIES COUNT:', payload?.data?.beneficiaries?.length);
-    console.log('FIRST BENEFICIARY:', payload?.data?.beneficiaries?.[0]);
 
     if (!response.ok || payload?.ok === false) {
       const message = [payload?.error, payload?.details].filter(Boolean).join(' ') || 'Apps Script request failed';
@@ -72,8 +95,19 @@ async function request(params, options = {}) {
 }
 
 export async function getBootstrapData() {
-  const payload = await request({ action: 'bootstrap' });
-  return payload?.data || null;
+  if (!bootstrapRequest) {
+    bootstrapRequest = request({ action: 'bootstrap' })
+      .then((payload) => {
+        const data = payload?.data || null;
+        if (data) writeCachedBootstrapData(data);
+        return data;
+      })
+      .finally(() => {
+        bootstrapRequest = null;
+      });
+  }
+
+  return bootstrapRequest;
 }
 
 export async function saveSurvey(payload) {
