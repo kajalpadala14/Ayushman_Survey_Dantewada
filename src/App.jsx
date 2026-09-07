@@ -2,16 +2,36 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BarChart3, Home, Moon, ShieldCheck, SunMedium, Users } from 'lucide-react';
 
 import { appConfig } from './config';
-import { getBootstrapData, readCachedBootstrapData, saveSurvey } from './services/appsScriptApi';
+import { getBootstrapData, readCachedBootstrapData, writeCachedBootstrapData, saveSurvey } from './services/appsScriptApi';
 import ReportsDashboard from './components/ReportsDashboard';
 import SurveyorDashboard from './components/SurveyorDashboard';
 import SurveyWizard from './components/SurveyWizard';
 
 export default function App() {
   const [cachedBootstrapData] = useState(() => readCachedBootstrapData());
-  const [theme, setTheme] = useState(appConfig.defaultTheme);
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ayushman_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch (e) {
+      /* ignore */
+    }
+    return appConfig.defaultTheme || 'light';
+  });
   const [currentUser] = useState(appConfig.currentUser);
   const [activeView, setActiveView] = useState('dashboard');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ayushman_theme', theme);
+    } catch (e) {
+      /* ignore */
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.body.setAttribute('data-theme', theme);
+    document.body.classList.toggle('dark', theme === 'dark');
+  }, [theme]);
 
   const [beneficiaries, setBeneficiaries] = useState(
     Array.isArray(cachedBootstrapData?.beneficiaries) ? cachedBootstrapData.beneficiaries : []
@@ -91,8 +111,9 @@ export default function App() {
     const surveyId = `${appConfig.surveyIdPrefix}-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
     const surveyDate = now.toISOString().replace('T', ' ').substring(0, 16);
 
-    await saveSurvey({
+    const submissionData = {
       beneficiaryId,
+      beneficiaryName: selectedBeneficiary?.name || '',
       responses,
       aadhaarInfo,
       rationInfo,
@@ -101,25 +122,46 @@ export default function App() {
       surveyId,
       surveyDate,
       submittedBy: currentUser.id
-    });
+    };
 
-    await loadBootstrapData({ showLoading: false });
+    await saveSurvey(submissionData);
+
+    const updatedStatus = overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found';
+    const beneficiaryPatch = {
+      status: updatedStatus,
+      overallResult,
+      surveyId,
+      surveyDate,
+      aadhaarInfo,
+      rationInfo,
+      mobileInfo,
+      parameterResponses: responses
+    };
+
+    setBeneficiaries((previous) =>
+      previous.map((b) => (b.id === beneficiaryId ? { ...b, ...beneficiaryPatch } : b))
+    );
 
     setSelectedBeneficiary((previous) => {
       if (!previous || previous.id !== beneficiaryId) return previous;
-
-      return {
-        ...previous,
-        status: overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found',
-        overallResult,
-        surveyId,
-        surveyDate,
-        aadhaarInfo,
-        rationInfo,
-        mobileInfo,
-        parameterResponses: responses
-      };
+      return { ...previous, ...beneficiaryPatch };
     });
+
+    const cached = readCachedBootstrapData();
+    if (cached?.beneficiaries) {
+      writeCachedBootstrapData({
+        ...cached,
+        beneficiaries: cached.beneficiaries.map((b) =>
+          b.id === beneficiaryId ? { ...b, ...beneficiaryPatch } : b
+        )
+      });
+    }
+
+    window.setTimeout(() => {
+      loadBootstrapData({ showLoading: false }).catch((err) =>
+        console.warn('Background sync warning:', err)
+      );
+    }, 2000);
 
     return { surveyId, surveyDate };
   };
@@ -154,88 +196,26 @@ export default function App() {
 
   return (
     <div
-      className="app-container"
+      className={`app-container ${isDark ? 'dark' : 'light'}`}
+      data-theme={theme}
       style={{
         background: isDark ? '#0f172a' : '#f8fafc',
         color: isDark ? '#e2e8f0' : '#111827'
       }}
     >
       <main className="main-content" style={{ background: isDark ? '#0f172a' : '#f8fafc' }}>
-        <header
-          className="top-header"
-          style={{
-            background: 'linear-gradient(90deg, #f1fffb 0%, #f8fffd 54%, #f6fffc 100%)',
-            border: '1px solid #dff6ee',
-            borderBottom: '1px solid #dff6ee',
-            minHeight: '58px',
-            padding: '0.45rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            width: '100%',
-            margin: '0',
-            flexWrap: 'nowrap',
-            borderRadius: '0',
-            boxShadow: 'none'
-          }}
-        >
-          <div
-            className="app-brand"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              flex: '0 0 245px',
-              minWidth: 0,
-              paddingLeft: '0'
-            }}
-          >
-            <div
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #12d692 0%, #05a86c 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 8px 18px rgba(16, 185, 129, 0.28), inset 0 0 0 2px rgba(255, 255, 255, 0.35)',
-                flexShrink: 0
-              }}
-            >
-              <ShieldCheck size={16} color="white" strokeWidth={2.4} />
+        <header className="top-header">
+          <div className="app-brand">
+            <div className="brand-icon">
+              <ShieldCheck size={18} color="white" strokeWidth={2.4} />
             </div>
             <div className="brand-copy">
-              <span
-                className="brand-title"
-                style={{
-                  fontWeight: '800',
-                  fontSize: '0.95rem',
-                  color: '#0f172a',
-                  lineHeight: 1.2,
-                  letterSpacing: '0',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {appConfig.appName}
-              </span>
+              <span className="brand-title">{appConfig.appName}</span>
               <small className="brand-department">{appConfig.departmentName}</small>
             </div>
           </div>
 
-          <div
-            className="app-nav"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              gap: '2.2rem',
-              flex: '1 1 auto',
-              minWidth: 0,
-              marginLeft: 'auto'
-            }}
-          >
+          <nav className="app-nav desktop-nav">
             {navItems.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeView === tab.id;
@@ -246,60 +226,44 @@ export default function App() {
                   type="button"
                   className={`app-nav-tab ${isActive ? 'active' : ''}`}
                   onClick={() => setActiveView(tab.id)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.6rem',
-                    minWidth: isActive ? '132px' : '124px',
-                    flex: '0 0 auto',
-                    height: '36px',
-                    padding: isActive ? '0.35rem 0.95rem' : '0.35rem 0.55rem',
-                    borderRadius: '999px',
-                    border: '1px solid transparent',
-                    outline: 'none',
-                    background: isActive ? '#e7f8f1' : 'transparent',
-                    color: isActive ? '#0f172a' : '#111827',
-                    fontSize: '0.9rem',
-                    fontWeight: isActive ? '800' : '700',
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: 'none'
-                  }}
                 >
-                  <Icon size={14} strokeWidth={2.25} />
+                  <Icon size={18} strokeWidth={2.25} />
                   <span className="app-nav-label">{tab.label}</span>
                 </button>
               );
             })}
-          </div>
+          </nav>
 
           <button
             className="theme-toggle"
             type="button"
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
             aria-label="Toggle theme"
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              border: '1px solid #d8f5eb',
-              background: '#ffffff',
-              color: '#11b981',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 7px 18px rgba(15, 118, 110, 0.08)',
-              transition: 'all 0.2s ease',
-              marginLeft: 'auto',
-              flexShrink: 0
-            }}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {isDark ? <SunMedium size={14} /> : <Moon size={14} />}
+            {isDark ? <SunMedium size={18} /> : <Moon size={18} />}
           </button>
         </header>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="app-nav mobile-bottom-nav">
+          {navItems.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeView === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`app-nav-tab ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveView(tab.id)}
+              >
+                <Icon size={18} strokeWidth={2.25} />
+                <span className="app-nav-label">{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         <div className="page-body" style={{ maxWidth: '100%', paddingLeft: 0, paddingRight: 0, margin: '0 auto' }}>
           {renderDataState() || (selectedBeneficiary ? (

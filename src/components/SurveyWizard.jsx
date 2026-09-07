@@ -240,7 +240,8 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
       setStep(6);
     } catch (error) {
       console.error('Survey submit failed:', error);
-      setValidationError('Survey submit नहीं हो सका। कृपया backend/API connection check करें।');
+      const detail = error instanceof Error && error.message ? error.message : String(error);
+      setValidationError(`Survey submit नहीं हो सका: ${detail}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -260,47 +261,62 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
   return (
     <div className="survey-wizard-shell" style={{ maxWidth: '800px', margin: '0 auto' }}>
       {/* Top Header Navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <button className="btn btn-outline" onClick={onCancel}>
+      <div className="survey-top-nav">
+        <button className="btn btn-outline survey-back-btn" onClick={onCancel}>
           <ArrowLeft size={18} /> Back to Assigned
         </button>
-        <span style={{ fontSize: '0.875rem', color: 'var(--neutral-500)' }}>
+        <span className="survey-beneficiary-tag">
           Beneficiary: <strong>{beneficiary.name}</strong> ({beneficiary.id})
         </span>
       </div>
 
       {/* Progress Indicator */}
-      <div className="card" style={{ padding: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="card survey-progress-card">
+        {/* Desktop Stepper */}
+        <div className="survey-stepper desktop-stepper">
           {[
             { num: 1, label: '1. Details' },
-            { num: 2, label: '2. Aadhaar Verification' },
+            { num: 2, label: '2. Aadhaar' },
             { num: 3, label: '3. Ration' },
             { num: 4, label: '4. Mobile' },
-            { num: 5, label: '5. Review' },
-            { num: 6, label: '6. Submit' }
+            { num: 5, label: '5. Review' }
           ].map((item, idx) => (
-            <div key={item.num} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: step >= item.num ? 1 : 0.4 }}>
-              <div style={{
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                background: step === item.num ? 'var(--primary)' : step > item.num ? 'var(--success)' : 'var(--neutral-300)',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '0.85rem'
-              }}>
-                {step > item.num ? <Check size={16} /> : item.num}
+            <div key={item.num} className={`survey-step-item ${step >= item.num ? 'active' : ''} ${step === item.num ? 'current' : ''}`}>
+              <div className="survey-step-circle">
+                {step > item.num ? <Check size={14} /> : item.num}
               </div>
-              <span style={{ fontWeight: step === item.num ? '700' : '500', fontSize: '0.875rem' }}>
-                {item.label}
-              </span>
-              {idx < 3 && <div style={{ width: '20px', height: '2px', background: 'var(--neutral-200)', margin: '0 0.25rem' }} />}
+              <span className="survey-step-label">{item.label}</span>
+              {idx < 4 && <div className="survey-step-line" />}
             </div>
           ))}
+        </div>
+
+        {/* Mobile Stepper */}
+        <div className="mobile-stepper">
+          <div className="mobile-stepper-header">
+            <span className="mobile-step-pill">चरण {step > 5 ? 5 : step} / 5</span>
+            <span className="mobile-step-name">
+              {step === 1 && 'सदस्य विवरण'}
+              {step === 2 && 'आधार सत्यापन'}
+              {step === 3 && 'राशन कार्ड'}
+              {step === 4 && 'मोबाइल नंबर'}
+              {step === 5 && 'समीक्षा व सबमिट'}
+              {step === 6 && 'सर्वे पूर्ण'}
+            </span>
+          </div>
+          <div className="mobile-step-progress-bar">
+            <div className="mobile-step-progress-fill" style={{ width: `${Math.min(100, (step / 5) * 100)}%` }} />
+          </div>
+          <div className="mobile-step-dots">
+            {[1, 2, 3, 4, 5].map((num) => (
+              <div
+                key={num}
+                className={`mobile-step-dot ${step === num ? 'current' : step > num ? 'completed' : ''}`}
+              >
+                {step > num ? <Check size={11} /> : num}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -378,7 +394,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
             </div>
           )}
 
-          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: '#fff', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: 'var(--card-bg, #fff)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.25rem', paddingBottom: '0.85rem', borderBottom: '1px solid var(--neutral-200)' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0 0 0.3rem 0', color: 'var(--neutral-900)' }}>आधार जानकारी भरें</h2>
@@ -535,12 +551,12 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
             </div>
           )}
 
-          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: '#fff', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: 'var(--card-bg, #fff)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
             <div style={{ marginBottom: '1.25rem', fontSize: '1.1rem', fontWeight: '700', color: 'var(--neutral-900)' }}>
               क्या परिवार के पास राशन कार्ड है?
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
+            <div className="ration-choice-grid">
               {[
                 { id: 'yes', icon: '✅', title: 'हाँ, राशन कार्ड है', helper: '12 अंक' },
                 { id: 'no', icon: '❌', title: 'नहीं है', helper: 'नहीं' }
@@ -609,7 +625,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
                     padding: '0.9rem 1rem',
                     fontSize: '1rem',
                     outline: 'none',
-                    background: '#fff',
+                    background: 'var(--card-bg, #fff)',
                     boxShadow: '0 1px 2px rgba(15, 23, 42, 0.03)'
                   }}
                 />
@@ -687,7 +703,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
             </div>
           )}
 
-          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: '#fff', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: 'var(--card-bg, #fff)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
             <div style={{ marginBottom: '1.25rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--neutral-900)', margin: 0 }}>मोबाइल नंबर की जानकारी भरें</h2>
             </div>
@@ -761,7 +777,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
 
       {/* STEP 5: REVIEW SCREEN */}
       {step === 5 && (
-        <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: '#fff', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+        <div className="card" style={{ padding: '1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: 'var(--card-bg, #fff)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '1rem', borderBottom: '1px solid var(--neutral-200)', paddingBottom: '0.5rem' }}>
             Survey Summary & Review (समीक्षा)
           </h2>
@@ -775,7 +791,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
 
           <div style={{ background: 'var(--neutral-50)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', border: '1px solid var(--neutral-200)' }}>
             <h4 style={{ fontSize: '0.95rem', color: 'var(--neutral-700)', marginBottom: '0.5rem' }}>Beneficiary Overview</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <div className="review-beneficiary-grid">
               <div><strong>Name:</strong> {beneficiary.name}</div>
               <div><strong>ID:</strong> {beneficiary.id}</div>
               <div><strong>Village:</strong> {beneficiary.village}</div>
@@ -863,7 +879,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
 
       {/* STEP 6: SUBMISSION SUCCESS SCREEN */}
       {step === 6 && (
-        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: '#fff', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem', borderRadius: '18px', border: '1px solid var(--neutral-200)', background: 'var(--card-bg, #fff)', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.04)' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'var(--success-bg)', color: 'var(--success)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
             <CheckCircle size={48} />
           </div>

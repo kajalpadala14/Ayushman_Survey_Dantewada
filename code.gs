@@ -3,18 +3,6 @@ const VALID_OVERALL_RESULTS = ['VERIFIED', 'ISSUE FOUND'];
 const DEFAULT_SHEET_ID = '12Y_mtNqQfmxtS99KX82c75ArE9XWXeWNOusYcoplImw';
 const BENEFICIARY_SHEET_NAME = 'Labhanvit Nahi';
 const LEGACY_BENEFICIARY_SHEET_NAME = 'Beneficiaries';
-const SURVEY_HEADERS = [
-  'surveyId',
-  'beneficiaryId',
-  'submittedBy',
-  'overallResult',
-  'surveyDate',
-  'status',
-  'responses',
-  'aadhaarInfo',
-  'rationInfo',
-  'mobileInfo'
-];
 let spreadsheetCache;
 
 function configureSpreadsheet() {
@@ -30,13 +18,14 @@ function configureSpreadsheet() {
 function getSpreadsheet() {
   if (spreadsheetCache) return spreadsheetCache;
 
+  const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (activeSpreadsheet) {
+    spreadsheetCache = activeSpreadsheet;
+    return spreadsheetCache;
+  }
+
   const sheetId = clean(PropertiesService.getScriptProperties().getProperty('SHEET_ID')) || DEFAULT_SHEET_ID;
   if (!sheetId) {
-    const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    if (activeSpreadsheet) {
-      spreadsheetCache = activeSpreadsheet;
-      return spreadsheetCache;
-    }
     throw new Error('Missing SHEET_ID in Script Properties.');
   }
 
@@ -148,6 +137,7 @@ function mapAadhaarType(row) {
 function normalizeRationStatus(raw, rationNumber) {
   const value = clean(raw).toLowerCase();
   if (value === 'no' || value === 'नहीं' || value === 'not available') return 'no';
+  if (value === 'yes' || value === 'हाँ' || value === 'ha') return 'no';
   if (clean(rationNumber)) return 'yes';
   return 'unknown';
 }
@@ -170,10 +160,25 @@ function mapBeneficiaryRow(rawRow, index) {
   const enrollmentNumber = clean(getValue(row, ['एनरोलमेंट नंबर', 'Enrollment Number', 'enrollmentNumber']));
   const aadhaarRemark = clean(getValue(row, ['रिमार्क', 'Remark', 'aadhaarRemark']));
   const rationNumber = clean(getValue(row, ['राशन कार्ड नंबर', 'Ration Card Number', 'rationNumber']));
-  const rationNotAvailable = getValue(row, ['राशन कार्ड नहीं है', 'Ration Card Not Available', 'rationNotAvailable']);
-  const hasRationCard = normalizeRationStatus(rationNotAvailable, rationNumber);
+  const rationNotAvailable = clean(getValue(row, ['राशन कार्ड नहीं है', 'Ration Card Not Available', 'rationNotAvailable']));
+  const hasRationCard = rationNotAvailable === 'हाँ' || rationNotAvailable.toLowerCase() === 'yes'
+    ? 'no'
+    : (rationNumber ? 'yes' : normalizeRationStatus(rationNotAvailable, rationNumber));
 
   const id = clean(getValue(row, ['id', 'beneficiaryId', 'सदस्य आईडी'])) || `AYU-BEN-${String(index + 1).padStart(6, '0')}`;
+
+  const explicitStatus = clean(getValue(row, ['सर्वे स्थिति', 'Status', 'status', 'स्थिति']));
+  const surveyId = clean(getValue(row, ['सर्वे आईडी', 'Survey ID', 'surveyId']));
+  const surveyDate = clean(getValue(row, ['सर्वे दिनांक', 'Survey Date', 'surveyDate']));
+  const submittedBy = clean(getValue(row, ['सर्वेक्षक', 'Surveyor', 'submittedBy']));
+  const overallResult = clean(getValue(row, ['परिणाम', 'Overall Result', 'overallResult']));
+
+  let status = 'Pending';
+  if (explicitStatus) {
+    status = explicitStatus;
+  } else if (aadhaarNumber || enrollmentNumber || aadhaarRemark || surveyId) {
+    status = 'Completed';
+  }
 
   return {
     id,
@@ -186,8 +191,12 @@ function mapBeneficiaryRow(rawRow, index) {
     block,
     gp,
     village,
-    status: 'Pending',
-    assignedSurveyorId: '',
+    status,
+    surveyId,
+    surveyDate,
+    submittedBy,
+    overallResult: overallResult || (status === 'Completed' ? 'VERIFIED' : (status === 'Issue Found' ? 'ISSUE FOUND' : '')),
+    assignedSurveyorId: submittedBy,
     assignedSurveyorName: '',
     aadhaarInfo: {
       type: mapAadhaarType(row),
@@ -198,6 +207,9 @@ function mapBeneficiaryRow(rawRow, index) {
     rationInfo: {
       rationNumber,
       hasRationCard
+    },
+    mobileInfo: {
+      mobileNumber: mobile
     },
     address: '',
     maritalStatus: clean(getValue(row, ['वैवाहिक स्थिति', 'Marital Status', 'maritalStatus'])),
@@ -241,56 +253,48 @@ function mapUsersSheet(rows) {
   }));
 }
 
-function parseJsonCell(value) {
-  const text = clean(value);
-  if (!text) return {};
+function deleteSurveySubmissionsTabIfPresent(ss) {
   try {
-    const parsed = JSON.parse(text);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (error) {
-    return {};
+    const sheet = ss.getSheetByName('SurveySubmissions');
+    if (sheet) {
+      ss.deleteSheet(sheet);
+    }
+  } catch (err) {
+    // Ignore if not permitted or already removed
   }
 }
 
-function getSurveySubmissionMap() {
-  const submissions = getSheetData('SurveySubmissions', 1);
+function findBeneficiaryRow(sheet, beneficiaryId, beneficiaryName) {
+  const headerRow = 2;
+  const lastRow = sheet.getLastRow();
+  const match = beneficiaryId && String(beneficiaryId).match(/AYU-BEN-(\d+)/i);
 
-  return submissions.reduce((acc, row) => {
-    const beneficiaryId = clean(getValue(row, ['beneficiaryId']));
-    if (!beneficiaryId) return acc;
+  if (match) {
+    const rowNumber = parseInt(match[1], 10) + headerRow;
+    if (rowNumber <= lastRow) {
+      if (beneficiaryName) {
+        const nameOnRow = clean(sheet.getRange(rowNumber, 5).getValue()); // Col 5: सदस्य का नाम
+        if (!nameOnRow || nameOnRow.toLowerCase() === clean(beneficiaryName).toLowerCase()) {
+          return rowNumber;
+        }
+      } else {
+        return rowNumber;
+      }
+    }
+  }
 
-    acc[beneficiaryId] = {
-      surveyId: clean(getValue(row, ['surveyId'])),
-      submittedBy: clean(getValue(row, ['submittedBy'])),
-      overallResult: clean(getValue(row, ['overallResult'])).toUpperCase(),
-      surveyDate: clean(getValue(row, ['surveyDate'])),
-      status: clean(getValue(row, ['status'])) || 'Completed',
-      parameterResponses: parseJsonCell(getValue(row, ['responses'])),
-      aadhaarInfo: parseJsonCell(getValue(row, ['aadhaarInfo'])),
-      rationInfo: parseJsonCell(getValue(row, ['rationInfo'])),
-      mobileInfo: parseJsonCell(getValue(row, ['mobileInfo']))
-    };
+  // Fallback: search Column 5 (सदस्य का नाम)
+  if (lastRow > headerRow && beneficiaryName) {
+    const names = sheet.getRange(headerRow + 1, 5, lastRow - headerRow, 1).getDisplayValues();
+    const targetName = clean(beneficiaryName).toLowerCase();
+    for (let i = 0; i < names.length; i++) {
+      if (clean(names[i][0]).toLowerCase() === targetName) {
+        return i + headerRow + 1;
+      }
+    }
+  }
 
-    return acc;
-  }, {});
-}
-
-function mergeSubmissionIntoBeneficiary(beneficiary, submissionsByBeneficiaryId) {
-  const submission = submissionsByBeneficiaryId[beneficiary.id];
-  if (!submission) return beneficiary;
-
-  return {
-    ...beneficiary,
-    status: submission.status,
-    surveyId: submission.surveyId,
-    submittedBy: submission.submittedBy,
-    overallResult: submission.overallResult,
-    surveyDate: submission.surveyDate,
-    parameterResponses: submission.parameterResponses,
-    aadhaarInfo: Object.keys(submission.aadhaarInfo).length ? submission.aadhaarInfo : beneficiary.aadhaarInfo,
-    rationInfo: Object.keys(submission.rationInfo).length ? submission.rationInfo : beneficiary.rationInfo,
-    mobileInfo: submission.mobileInfo
-  };
+  return match ? parseInt(match[1], 10) + headerRow : -1;
 }
 
 function getBackendDiagnostics() {
@@ -318,52 +322,50 @@ function doGet(e) {
   try {
     const action = (e && e.parameter && e.parameter.action) || 'bootstrap';
 
+    if (action === 'deleteSurveySubmissions') {
+      const ss = getSpreadsheet();
+      deleteSurveySubmissionsTabIfPresent(ss);
+      return jsonResponse({ ok: true, statusCode: 200, message: 'SurveySubmissions sheet removed.' });
+    }
+
     if (action === 'diagnostics') {
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: true, statusCode: 200, data: getBackendDiagnostics() }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return jsonResponse({ ok: true, statusCode: 200, data: getBackendDiagnostics() });
     }
 
     if (action === 'bootstrap') {
       const ss = getSpreadsheet();
+      deleteSurveySubmissionsTabIfPresent(ss);
+
       const beneficiarySheet = ss.getSheetByName(BENEFICIARY_SHEET_NAME);
       const beneficiaries = (beneficiarySheet
         ? getSheetData(BENEFICIARY_SHEET_NAME, 2)
         : getSheetData(LEGACY_BENEFICIARY_SHEET_NAME, 1)
       ).map(mapBeneficiaryRow);
-      const submissionsByBeneficiaryId = getSurveySubmissionMap();
+
       const parameters = mapParametersSheet(getSheetData('Parameters'));
       const issues = mapIssuesSheet(getSheetData('Issues'));
       const users = mapUsersSheet(getSheetData('Users'));
 
-      const payload = {
+      return jsonResponse({
         ok: true,
         statusCode: 200,
         data: {
-          beneficiaries: beneficiaries.map((beneficiary) => mergeSubmissionIntoBeneficiary(beneficiary, submissionsByBeneficiaryId)),
+          beneficiaries,
           parameters,
           issues,
           users
         }
-      };
-
-      return ContentService
-        .createTextOutput(JSON.stringify(payload))
-        .setMimeType(ContentService.MimeType.JSON);
+      });
     }
 
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, statusCode: 400, error: 'Unknown GET action' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({ ok: false, statusCode: 400, error: 'Unknown GET action' });
   } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        ok: false,
-        statusCode: 500,
-        error: 'Unable to load application data.',
-        details: error && error.message ? error.message : String(error)
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse({
+      ok: false,
+      statusCode: 500,
+      error: 'Unable to load application data.',
+      details: error && error.message ? error.message : String(error)
+    });
   }
 }
 
@@ -382,6 +384,12 @@ function doPost(e) {
       return jsonResponse({ ok: false, statusCode: 400, error: 'Invalid JSON request.' });
     }
 
+    if (payload && payload.action === 'deleteSurveySubmissions') {
+      const ss = getSpreadsheet();
+      deleteSurveySubmissionsTabIfPresent(ss);
+      return jsonResponse({ ok: true, statusCode: 200, message: 'SurveySubmissions sheet removed.' });
+    }
+
     if (payload && payload.action === 'submitSurvey') {
       const surveyId = clean(payload.surveyId);
       const beneficiaryId = clean(payload.beneficiaryId);
@@ -393,38 +401,60 @@ function doPost(e) {
       }
 
       lock = LockService.getScriptLock();
-      lock.waitLock(30000);
+      lock.waitLock(10000);
       const ss = getSpreadsheet();
-      const sheet = ss.getSheetByName('SurveySubmissions') || ss.insertSheet('SurveySubmissions');
+      deleteSurveySubmissionsTabIfPresent(ss);
 
-      if (sheet.getLastRow() === 0) {
-        sheet.getRange(1, 1, 1, SURVEY_HEADERS.length).setValues([SURVEY_HEADERS]);
+      const sheet = ss.getSheetByName(BENEFICIARY_SHEET_NAME);
+      if (!sheet) {
+        return jsonResponse({ ok: false, statusCode: 404, error: `Sheet '${BENEFICIARY_SHEET_NAME}' not found.` });
       }
 
-      const lastRow = sheet.getLastRow();
-      if (lastRow > 1) {
-        const surveyIds = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
-        if (surveyIds.some((row) => clean(row[0]) === surveyId)) {
-          return jsonResponse({ ok: false, statusCode: 409, error: 'Survey already submitted' });
-        }
+      // Ensure headers for Columns 17-20 on row 2 if missing
+      const lastCol = sheet.getLastColumn();
+      if (lastCol < 20) {
+        sheet.getRange(2, 17, 1, 4).setValues([['सर्वे स्थिति', 'सर्वे आईडी', 'सर्वे दिनांक', 'सर्वेक्षक']]);
       }
 
-      const row = [
-        surveyId,
-        beneficiaryId,
-        clean(payload.submittedBy),
-        overallResult,
-        clean(payload.surveyDate),
-        overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found',
-        safeJson(payload.responses),
-        safeJson(payload.aadhaarInfo),
-        safeJson(payload.rationInfo),
-        safeJson(payload.mobileInfo)
-      ];
+      const targetRow = findBeneficiaryRow(sheet, beneficiaryId, payload.beneficiaryName);
+      if (targetRow < 3 || targetRow > sheet.getLastRow()) {
+        return jsonResponse({ ok: false, statusCode: 404, error: `Beneficiary '${beneficiaryId}' row not found in ${BENEFICIARY_SHEET_NAME}.` });
+      }
 
-      sheet.appendRow(row);
+      const aadhaarInfo = payload.aadhaarInfo || {};
+      const aadhaarType = clean(aadhaarInfo.type);
+      const aadhaarNum = aadhaarType === 'aadhaar' ? clean(aadhaarInfo.aadhaarNumber) : '';
+      const enrollmentNum = aadhaarType === 'enrollment' ? clean(aadhaarInfo.enrollmentNumber) : '';
+      const aadhaarRemark = aadhaarType === 'remark' ? clean(aadhaarInfo.remark) : '';
 
-      return jsonResponse({ ok: true, statusCode: 200, data: { submitted: true, surveyId } });
+      const rationInfo = payload.rationInfo || {};
+      const hasRation = clean(rationInfo.hasRationCard).toLowerCase();
+      const rationNum = hasRation === 'yes' ? clean(rationInfo.rationNumber) : '';
+      const rationNotAvailable = hasRation === 'no' ? 'हाँ' : (hasRation === 'yes' ? 'नहीं' : '');
+
+      const mobileInfo = payload.mobileInfo || {};
+      const mobileNum = clean(mobileInfo.mobileNumber);
+
+      const status = overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found';
+
+      // Update Columns 11 (K) through 20 (T) in targetRow:
+      const updatedRowData = [[
+        aadhaarNum,         // Col 11 (K): आधार नंबर
+        enrollmentNum,      // Col 12 (L): एनरोलमेंट नंबर
+        aadhaarRemark,      // Col 13 (M): रिमार्क
+        rationNum,          // Col 14 (N): राशन कार्ड नंबर
+        rationNotAvailable, // Col 15 (O): राशन कार्ड नहीं है
+        mobileNum,          // Col 16 (P): मोबाइल नंबर
+        status,             // Col 17 (Q): सर्वे स्थिति
+        surveyId,           // Col 18 (R): सर्वे आईडी
+        clean(payload.surveyDate), // Col 19 (S): सर्वे दिनांक
+        clean(payload.submittedBy) // Col 20 (T): सर्वेक्षक
+      ]];
+
+      sheet.getRange(targetRow, 11, 1, 10).setValues(updatedRowData);
+      SpreadsheetApp.flush();
+
+      return jsonResponse({ ok: true, statusCode: 200, data: { submitted: true, surveyId, targetRow } });
     }
 
     return jsonResponse({ ok: false, statusCode: 400, error: 'Unknown POST action.' });
@@ -436,16 +466,9 @@ function doPost(e) {
       details: error && error.message ? error.message : String(error)
     });
   } finally {
-    if (lock) lock.releaseLock();
-  }
-}
-
-function safeJson(value) {
-  if (value == null || typeof value !== 'object') return '{}';
-  try {
-    return JSON.stringify(value);
-  } catch (error) {
-    return '{}';
+    if (lock && typeof lock.hasLock === 'function' && lock.hasLock()) {
+      lock.releaseLock();
+    }
   }
 }
 

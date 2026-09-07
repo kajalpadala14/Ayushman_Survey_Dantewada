@@ -321,10 +321,6 @@ export default function SurveyorDashboard({
                   type="button"
                   onClick={() => setSummaryFocus(card.key)}
                   className={`dashboard-summary-card ${isSelected ? 'selected' : ''}`}
-                  style={{
-                    border: isSelected ? '1.5px solid #2563eb' : '1px solid #dfeaf5',
-                    background: isSelected ? '#edf4ff' : '#ffffff'
-                  }}
                 >
                   <div className="dashboard-summary-icon">
                     <Icon size={20} />
@@ -376,8 +372,8 @@ export default function SurveyorDashboard({
 
             <div style={{ display: 'grid', gap: '0.8rem' }}>
               {aadhaarTypeStats.map((stat, index) => (
-                <div key={stat.label} className="dashboard-data-row" style={{ display: 'grid', gridTemplateColumns: '180px minmax(180px, 1fr) 60px', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.96rem' }}>{stat.label}</div>
+                <div key={stat.label} className="dashboard-data-row">
+                  <div className="dashboard-data-label">{stat.label}</div>
                   <div style={{ position: 'relative', height: '32px', borderRadius: '10px', overflow: 'hidden', background: '#e5e7eb' }}>
                     <div
                       style={{

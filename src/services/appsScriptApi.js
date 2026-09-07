@@ -20,7 +20,7 @@ export function readCachedBootstrapData() {
   }
 }
 
-function writeCachedBootstrapData(data) {
+export function writeCachedBootstrapData(data) {
   try {
     window.localStorage.setItem(BOOTSTRAP_CACHE_KEY, JSON.stringify({
       data,
@@ -79,7 +79,13 @@ async function request(params, options = {}) {
       try {
         payload = JSON.parse(rawText);
       } catch {
-        payload = { ok: false, error: rawText };
+        let cleanError = 'Backend returned unexpected non-JSON response.';
+        if (rawText.includes('Page not found') || rawText.includes('unable to open the file') || rawText.includes('404')) {
+          cleanError = 'Google Apps Script डिप्लॉयमेंट प्रोसेस हो रहा है (404 Page not found). कृपया 5-10 सेकंड बाद पेज रिफ्रेश (Reload) करें।';
+        } else if (rawText.includes('Authorization is required') || rawText.includes('accounts.google.com')) {
+          cleanError = 'Google Apps Script एक्सेस अनुमति की आवश्यकता है। कृपया Apps Script में "Who has access" को "Anyone" सेट करें।';
+        }
+        payload = { ok: false, error: cleanError };
       }
     }
 
