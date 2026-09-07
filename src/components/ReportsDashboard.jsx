@@ -44,7 +44,8 @@ const formatDate = (value) => {
   return date.toLocaleDateString('en-GB', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
   });
 };
 
@@ -186,6 +187,8 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
   if (activeTabKey === 'date') {
     return beneficiaries
       .filter((b) => b.surveyDate)
+      .slice()
+      .sort((a, b) => new Date(b.surveyDate) - new Date(a.surveyDate))
       .map((b) => ({
         id: b.id,
         name: b.name,
@@ -194,8 +197,7 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
         gram: b.village || 'Unknown',
         date: formatDate(b.surveyDate),
         status: b.status || 'Pending'
-      }))
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+      }));
   }
 
   return beneficiaries.map((b) => ({

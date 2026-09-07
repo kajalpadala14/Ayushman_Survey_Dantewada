@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Users
 } from 'lucide-react';
+import { formatSurveyTime } from '../utils/dateTime';
 
 const hindiGender = {
   Male: 'पुरुष',
@@ -599,7 +600,7 @@ export default function SurveyorDashboard({
                           {statusHindi[beneficiary.status] || beneficiary.status}
                         </span>
                       </td>
-                      <td data-label="Time">{beneficiary.surveyDate ? beneficiary.surveyDate.slice(11, 16) : '-'}</td>
+                      <td data-label="Time">{formatSurveyTime(beneficiary.surveyDate)}</td>
                       <td data-label="Call">
                         <a className="call-btn" href={`tel:${beneficiary.mobile}`} aria-label={`${beneficiary.name} को कॉल करें`}>
                           <Phone size={16} />

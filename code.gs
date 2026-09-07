@@ -41,6 +41,14 @@ function clean(value) {
   return String(value == null ? '' : value).trim();
 }
 
+function formatISTDate(value) {
+  if (!value) return '';
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, "Asia/Kolkata", "yyyy-MM-dd HH:mm:ss");
+  }
+  return clean(value);
+}
+
 function normalizeHeader(value) {
   return clean(value)
     .normalize('NFKC')
@@ -169,7 +177,7 @@ function mapBeneficiaryRow(rawRow, index) {
 
   const explicitStatus = clean(getValue(row, ['सर्वे स्थिति', 'Status', 'status', 'स्थिति']));
   const surveyId = clean(getValue(row, ['सर्वे आईडी', 'Survey ID', 'surveyId']));
-  const surveyDate = clean(getValue(row, ['सर्वे दिनांक', 'Survey Date', 'surveyDate']));
+  const surveyDate = formatISTDate(getValue(row, ['सर्वे दिनांक', 'Survey Date', 'surveyDate']));
   const submittedBy = clean(getValue(row, ['सर्वेक्षक', 'Surveyor', 'submittedBy']));
   const overallResult = clean(getValue(row, ['परिणाम', 'Overall Result', 'overallResult']));
 
@@ -447,7 +455,7 @@ function doPost(e) {
         mobileNum,          // Col 16 (P): मोबाइल नंबर
         status,             // Col 17 (Q): सर्वे स्थिति
         surveyId,           // Col 18 (R): सर्वे आईडी
-        clean(payload.surveyDate), // Col 19 (S): सर्वे दिनांक
+        clean(payload.surveyDate) || Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'), // Col 19 (S): सर्वे दिनांक
         clean(payload.submittedBy) // Col 20 (T): सर्वेक्षक
       ]];
 

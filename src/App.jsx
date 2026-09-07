@@ -6,6 +6,7 @@ import { getBootstrapData, readCachedBootstrapData, writeCachedBootstrapData, sa
 import ReportsDashboard from './components/ReportsDashboard';
 import SurveyorDashboard from './components/SurveyorDashboard';
 import SurveyWizard from './components/SurveyWizard';
+import { getISTDateTimeString } from './utils/dateTime';
 
 export default function App() {
   const [cachedBootstrapData] = useState(() => readCachedBootstrapData());
@@ -109,7 +110,7 @@ export default function App() {
   }) => {
     const now = new Date();
     const surveyId = `${appConfig.surveyIdPrefix}-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-    const surveyDate = now.toISOString().replace('T', ' ').substring(0, 16);
+    const surveyDate = getISTDateTimeString(now);
 
     const submissionData = {
       beneficiaryId,

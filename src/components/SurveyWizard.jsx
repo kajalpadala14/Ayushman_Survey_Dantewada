@@ -3,6 +3,7 @@ import {
   CheckCircle, AlertTriangle, ArrowLeft, Check
 } from 'lucide-react';
 import { appConfig } from '../config';
+import { formatSurveyDateTime } from '../utils/dateTime';
 
 const aadhaarRemarkOptions = [
   'जन्म प्रमाण पत्र नहीं बनाया गया',
@@ -901,7 +902,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
             </div>
             <div style={{ marginBottom: '0.5rem' }}>
               <span className="form-label">Survey Date:</span>
-              <span>{submittedSurvey?.surveyDate || new Date().toLocaleString()}</span>
+              <span>{formatSurveyDateTime(submittedSurvey?.surveyDate || new Date())}</span>
             </div>
             <div>
               <span className="form-label">Overall Status:</span>
