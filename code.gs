@@ -340,6 +340,21 @@ function doGet(e) {
       return jsonResponse({ ok: true, statusCode: 200, data: getBackendDiagnostics() });
     }
 
+    if (action === 'getTime') {
+      const googleNow = new Date();
+      const serverISTDate = Utilities.formatDate(googleNow, 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
+      return jsonResponse({
+        ok: true,
+        statusCode: 200,
+        data: {
+          timestamp: googleNow.getTime(),
+          surveyDate: serverISTDate,
+          iso: googleNow.toISOString(),
+          timeZone: 'Asia/Kolkata'
+        }
+      });
+    }
+
     if (action === 'bootstrap') {
       const ss = getSpreadsheet();
       deleteSurveySubmissionsTabIfPresent(ss);
@@ -353,6 +368,8 @@ function doGet(e) {
       const parameters = mapParametersSheet(getSheetData('Parameters'));
       const issues = mapIssuesSheet(getSheetData('Issues'));
       const users = mapUsersSheet(getSheetData('Users'));
+      const googleNow = new Date();
+      const serverISTDate = Utilities.formatDate(googleNow, 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
 
       return jsonResponse({
         ok: true,
@@ -361,7 +378,9 @@ function doGet(e) {
           beneficiaries,
           parameters,
           issues,
-          users
+          users,
+          serverTimestamp: googleNow.getTime(),
+          serverTime: serverISTDate
         }
       });
     }
@@ -445,6 +464,11 @@ function doPost(e) {
 
       const status = overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found';
 
+      // Always record authoritative Google Server Time in Indian Standard Time (IST)
+      const googleNow = new Date();
+      const serverSurveyDate = Utilities.formatDate(googleNow, 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
+      const finalSurveyDate = serverSurveyDate;
+
       // Update Columns 11 (K) through 20 (T) in targetRow:
       const updatedRowData = [[
         aadhaarNum,         // Col 11 (K): आधार नंबर
@@ -455,14 +479,23 @@ function doPost(e) {
         mobileNum,          // Col 16 (P): मोबाइल नंबर
         status,             // Col 17 (Q): सर्वे स्थिति
         surveyId,           // Col 18 (R): सर्वे आईडी
-        clean(payload.surveyDate) || Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss'), // Col 19 (S): सर्वे दिनांक
+        finalSurveyDate,    // Col 19 (S): सर्वे दिनांक (Google Server IST Time)
         clean(payload.submittedBy) // Col 20 (T): सर्वेक्षक
       ]];
 
       sheet.getRange(targetRow, 11, 1, 10).setValues(updatedRowData);
       SpreadsheetApp.flush();
 
-      return jsonResponse({ ok: true, statusCode: 200, data: { submitted: true, surveyId, targetRow } });
+      return jsonResponse({
+        ok: true,
+        statusCode: 200,
+        data: {
+          submitted: true,
+          surveyId,
+          surveyDate: finalSurveyDate,
+          targetRow
+        }
+      });
     }
 
     return jsonResponse({ ok: false, statusCode: 400, error: 'Unknown POST action.' });

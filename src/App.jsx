@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { BarChart3, Home, Moon, ShieldCheck, SunMedium, Users } from 'lucide-react';
 
 import { appConfig } from './config';
-import { getBootstrapData, readCachedBootstrapData, writeCachedBootstrapData, saveSurvey } from './services/appsScriptApi';
+import { getBootstrapData, readCachedBootstrapData, writeCachedBootstrapData, saveSurvey, fetchGoogleServerTime } from './services/appsScriptApi';
 import ReportsDashboard from './components/ReportsDashboard';
 import SurveyorDashboard from './components/SurveyorDashboard';
 import SurveyWizard from './components/SurveyWizard';
-import { getISTDateTimeString } from './utils/dateTime';
+import { getISTDateTimeString, getGoogleTimeDate } from './utils/dateTime';
 
 export default function App() {
   const [cachedBootstrapData] = useState(() => readCachedBootstrapData());
@@ -108,9 +108,11 @@ export default function App() {
     mobileInfo,
     overallResult
   }) => {
-    const now = new Date();
-    const surveyId = `${appConfig.surveyIdPrefix}-${now.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-    const surveyDate = getISTDateTimeString(now);
+    // 1. Fetch current time from Google Apps Script / calibrated time
+    const googleTimeStr = await fetchGoogleServerTime();
+    const googleDate = getGoogleTimeDate();
+    const surveyId = `${appConfig.surveyIdPrefix}-${googleDate.getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const initialSurveyDate = googleTimeStr || getISTDateTimeString(googleDate);
 
     const submissionData = {
       beneficiaryId,
@@ -121,18 +123,20 @@ export default function App() {
       mobileInfo,
       overallResult,
       surveyId,
-      surveyDate,
+      surveyDate: initialSurveyDate,
       submittedBy: currentUser.id
     };
 
-    await saveSurvey(submissionData);
+    // 2. Submit survey - Google server records and returns its official IST timestamp
+    const saveResult = await saveSurvey(submissionData);
+    const finalSurveyDate = saveResult?.surveyDate || initialSurveyDate;
 
     const updatedStatus = overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found';
     const beneficiaryPatch = {
       status: updatedStatus,
       overallResult,
       surveyId,
-      surveyDate,
+      surveyDate: finalSurveyDate,
       aadhaarInfo,
       rationInfo,
       mobileInfo,
@@ -164,7 +168,7 @@ export default function App() {
       );
     }, 2000);
 
-    return { surveyId, surveyDate };
+    return { surveyId, surveyDate: finalSurveyDate };
   };
 
   const renderDataState = () => {

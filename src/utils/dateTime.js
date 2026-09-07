@@ -1,11 +1,48 @@
 /**
- * Indian Standard Time (IST, UTC+5:30) Date and Time Utilities
+ * Indian Standard Time (IST, UTC+5:30) Date and Time Utilities with Google Server Sync
  */
 
+let serverTimeOffsetMs = 0;
+let hasSyncedGoogleTime = false;
+
 /**
- * Returns current timestamp formatted in Indian Standard Time: YYYY-MM-DD HH:mm:ss
+ * Synchronizes client clock with Google Server timestamp
+ * @param {number|string|Date} googleTimestamp - Milliseconds or Date from Google server
  */
-export function getISTDateTimeString(now = new Date()) {
+export function syncGoogleTime(googleTimestamp) {
+  if (!googleTimestamp) return;
+  try {
+    const serverMs = typeof googleTimestamp === 'number'
+      ? googleTimestamp
+      : new Date(googleTimestamp).getTime();
+    if (!isNaN(serverMs) && serverMs > 0) {
+      serverTimeOffsetMs = serverMs - Date.now();
+      hasSyncedGoogleTime = true;
+    }
+  } catch (err) {
+    console.warn('Could not sync Google time offset:', err);
+  }
+}
+
+/**
+ * Returns whether clock has been calibrated against Google server
+ */
+export function isGoogleTimeSynced() {
+  return hasSyncedGoogleTime;
+}
+
+/**
+ * Returns current Date adjusted by Google Server offset
+ */
+export function getGoogleTimeDate() {
+  return new Date(Date.now() + serverTimeOffsetMs);
+}
+
+/**
+ * Returns timestamp formatted in Indian Standard Time: YYYY-MM-DD HH:mm:ss
+ * Defaults to current Google Server-synchronized time
+ */
+export function getISTDateTimeString(now = getGoogleTimeDate()) {
   try {
     const istParts = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Kolkata',
@@ -27,10 +64,26 @@ export function getISTDateTimeString(now = new Date()) {
 }
 
 /**
+ * Returns current Google Server time formatted in IST
+ */
+export function getGoogleISTDateTimeString() {
+  return getISTDateTimeString(getGoogleTimeDate());
+}
+
+/**
  * Formats a survey timestamp into clean 12-hour Indian Standard Time (e.g. "03:50 PM")
  */
 export function formatSurveyTime(raw) {
   if (!raw || raw === '-') return '-';
+  if (raw instanceof Date) {
+    return raw.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).toUpperCase();
+  }
+
   const str = String(raw).trim();
   if (!str || str === '-') return '-';
 
@@ -42,7 +95,7 @@ export function formatSurveyTime(raw) {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
-      });
+      }).toUpperCase();
     }
 
     // If it is in format "YYYY-MM-DD HH:mm:ss" or "YYYY-MM-DD HH:mm"
@@ -65,7 +118,7 @@ export function formatSurveyTime(raw) {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
-      });
+      }).toUpperCase();
     }
   } catch (e) {
     /* fallback */
@@ -79,6 +132,18 @@ export function formatSurveyTime(raw) {
  */
 export function formatSurveyDateTime(raw) {
   if (!raw || raw === '-') return '-';
+  if (raw instanceof Date) {
+    return raw.toLocaleString('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).replace(',', '').replace(/(\d{2}\/\d{2}\/\d{4})\s+/, '$1, ').toUpperCase();
+  }
+
   const str = String(raw).trim();
   if (!str || str === '-') return '-';
 

@@ -1,4 +1,5 @@
 import { appConfig } from '../config';
+import { syncGoogleTime, getISTDateTimeString } from '../utils/dateTime';
 
 const BOOTSTRAP_CACHE_KEY = 'dnt-bootstrap-cache-v1';
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -105,7 +106,12 @@ export async function getBootstrapData() {
     bootstrapRequest = request({ action: 'bootstrap' })
       .then((payload) => {
         const data = payload?.data || null;
-        if (data) writeCachedBootstrapData(data);
+        if (data) {
+          if (data.serverTimestamp) {
+            syncGoogleTime(data.serverTimestamp);
+          }
+          writeCachedBootstrapData(data);
+        }
         return data;
       })
       .finally(() => {
@@ -114,6 +120,23 @@ export async function getBootstrapData() {
   }
 
   return bootstrapRequest;
+}
+
+/**
+ * Fetches current time directly from Google Apps Script server
+ * Returns formatted IST date time string (YYYY-MM-DD HH:mm:ss)
+ */
+export async function fetchGoogleServerTime() {
+  try {
+    const response = await request({ action: 'getTime' });
+    if (response?.data?.timestamp) {
+      syncGoogleTime(response.data.timestamp);
+      return response.data.surveyDate || getISTDateTimeString();
+    }
+  } catch (err) {
+    console.warn('Direct Google time fetch warning, using calibrated time:', err);
+  }
+  return getISTDateTimeString();
 }
 
 export async function saveSurvey(payload) {
@@ -125,5 +148,17 @@ export async function saveSurvey(payload) {
     })
   });
 
-  return response?.data || null;
+  const data = response?.data || null;
+  if (data?.surveyDate) {
+    try {
+      const parsed = new Date(data.surveyDate.replace(' ', 'T') + '+05:30');
+      if (!isNaN(parsed.getTime())) {
+        syncGoogleTime(parsed.getTime());
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return data;
 }
