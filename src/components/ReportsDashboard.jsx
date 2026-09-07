@@ -567,7 +567,7 @@ export default function ReportsDashboard({
     {
       key: 'block-detailed-modal',
       label: 'Block Wise Detailed Report',
-      icon: FileSpreadsheet,
+      icon: Sparkles,
       highlight: true,
       action: () => setBlockReportModalOpen(true)
     },
@@ -596,6 +596,7 @@ export default function ReportsDashboard({
       key: 'aadhaar-issue-excel',
       label: 'Aadhaar Issue',
       icon: FileSpreadsheet,
+      isActive: issueTypeFilter === 'Aadhaar Issue',
       action: () => {
         setIssueTypeFilter('Aadhaar Issue');
         setPage(1);
@@ -606,6 +607,7 @@ export default function ReportsDashboard({
       key: 'ration-issue-excel',
       label: 'Ration Card Issue',
       icon: FileSpreadsheet,
+      isActive: issueTypeFilter === 'Ration Card Issue',
       action: () => {
         setIssueTypeFilter('Ration Card Issue');
         setPage(1);
@@ -616,6 +618,7 @@ export default function ReportsDashboard({
       key: 'survey-completed-excel',
       label: 'Survey Completed',
       icon: FileSpreadsheet,
+      isActive: statusFilter === 'Completed',
       action: () => {
         setStatusFilter('Completed');
         setPage(1);
@@ -626,6 +629,7 @@ export default function ReportsDashboard({
       key: 'survey-pending-excel',
       label: 'Survey Pending',
       icon: FileSpreadsheet,
+      isActive: statusFilter === 'Pending',
       action: () => {
         setStatusFilter('Pending');
         setPage(1);
@@ -636,6 +640,7 @@ export default function ReportsDashboard({
       key: 'verified-beneficiary-excel',
       label: 'Verified Beneficiary',
       icon: FileSpreadsheet,
+      isActive: issueTypeFilter === 'Verified Beneficiary',
       action: () => {
         setIssueTypeFilter('Verified Beneficiary');
         setPage(1);
@@ -673,14 +678,18 @@ export default function ReportsDashboard({
 
       {/* Export & Quick Actions Bar */}
       <div className="report-export-grid" aria-label="Report export actions">
-        {exportTiles.map(({ key, label, icon: Icon, action, highlight }) => (
+        {exportTiles.map(({ key, label, icon: Icon, action, highlight, isActive }) => (
           <button
             key={key}
             type="button"
-            className={`report-export-tile ${highlight ? 'tile-highlight' : ''}`}
+            className={`report-export-tile ${highlight ? 'tile-highlight' : ''} ${isActive ? 'active' : ''}`}
             onClick={action}
           >
-            <span className="report-export-icon"><Icon size={16} /></span>
+            {Icon && (
+              <span className="report-export-icon">
+                <Icon size={14} className={key === 'block-detailed-modal' ? 'tab-sparkle' : ''} />
+              </span>
+            )}
             <span>{label}</span>
           </button>
         ))}
