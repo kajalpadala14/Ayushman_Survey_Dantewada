@@ -5746,3 +5746,401 @@ textarea {
     pointer-events: none;
   }
 }
+
+/* ==========================================================================
+   BLOCK WISE REPORT MODAL & DETAILED TABLE STYLES (MATCHING USER SCREENSHOT)
+   ========================================================================== */
+
+.block-report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1.25rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.block-report-modal-card {
+  width: min(1180px, 96vw);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.75rem;
+  overflow: hidden;
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.block-report-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-shrink: 0;
+}
+
+.block-report-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.block-report-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.block-report-subtitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}
+
+.block-report-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.block-report-count-badge {
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.block-report-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.block-report-close-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.block-report-table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 60vh;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.block-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  text-align: left;
+  min-width: 720px;
+}
+
+.block-report-table thead th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.85rem 1rem;
+  border-bottom: 1.5px solid #e2e8f0;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.block-report-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+.block-report-table thead th.th-highlight {
+  background: #fef3c7;
+  color: #92400e;
+  border-bottom-color: #fde68a;
+}
+
+.block-report-table tbody td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  font-size: 0.875rem;
+}
+
+.block-report-table tbody td.cell-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+}
+
+.block-report-table tbody td.cell-block-title {
+  text-align: left;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.block-report-table tbody td.cell-highlight {
+  background: #fffbeb;
+  color: #b45309;
+  font-weight: 800;
+  text-align: right;
+}
+
+.block-report-table tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+.block-report-table tbody tr:hover td.cell-highlight {
+  background-color: #fef3c7;
+}
+
+.block-report-total-row td {
+  background: #f8fafc !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  border-top: 2px solid #cbd5e1 !important;
+  border-bottom: none !important;
+}
+
+.block-report-total-row td.cell-highlight {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.block-report-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.block-report-footer-hint {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.block-report-download-btn {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  padding: 0.65rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+  transition: all 0.2s ease;
+}
+
+.block-report-download-btn:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.block-report-download-btn:active {
+  transform: translateY(0);
+}
+
+/* Tab Selector in Reports Toolbar */
+.report-tab-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.report-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.report-tab-pill:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.report-tab-pill.active {
+  background: #0f766e;
+  color: #ffffff;
+  border-color: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+}
+
+.tab-sparkle {
+  color: #facc15;
+}
+
+.report-action-btn.primary {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(15, 118, 110, 0.2);
+}
+
+.report-action-btn.primary:hover {
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+  color: #ffffff;
+}
+
+.tile-highlight {
+  border-color: #0d9488 !important;
+  background: #f0fdfa !important;
+  color: #0f766e !important;
+  font-weight: 700 !important;
+}
+
+.report-preview-launch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  transition: all 0.2s ease;
+}
+
+.report-preview-launch-btn:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Dark mode overrides for block modal */
+[data-theme="dark"] .block-report-modal-card {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .block-report-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .block-report-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .block-report-count-badge {
+  background: #334155;
+  color: #cbd5e1;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .block-report-close-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .block-report-table-scroll {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .block-report-table thead th {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-bottom-color: #334155;
+}
+
+[data-theme="dark"] .block-report-table thead th.th-highlight {
+  background: #78350f;
+  color: #fde68a;
+  border-bottom-color: #92400e;
+}
+
+[data-theme="dark"] .block-report-table tbody td {
+  border-bottom-color: #1e293b;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .block-report-table tbody td.cell-block-title {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .block-report-table tbody td.cell-num {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .block-report-table tbody td.cell-highlight {
+  background: #451a03;
+  color: #fde68a;
+}
+
+[data-theme="dark"] .block-report-total-row td {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-top-color: #475569 !important;
+}
+
+[data-theme="dark"] .block-report-total-row td.cell-highlight {
+  background: #78350f !important;
+  color: #fde68a !important;
+}
+

@@ -22,6 +22,9 @@ export default function App() {
   const [issueTypes, setIssueTypes] = useState(
     Array.isArray(cachedBootstrapData?.issues) ? cachedBootstrapData.issues : []
   );
+  const [users, setUsers] = useState(
+    Array.isArray(cachedBootstrapData?.users) ? cachedBootstrapData.users : []
+  );
   const [selectedBeneficiary, setSelectedBeneficiary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -41,12 +44,14 @@ export default function App() {
       setBeneficiaries(Array.isArray(data?.beneficiaries) ? data.beneficiaries : []);
       setParameters(Array.isArray(data?.parameters) ? data.parameters : []);
       setIssueTypes(Array.isArray(data?.issues) ? data.issues : []);
+      setUsers(Array.isArray(data?.users) ? data.users : []);
     } catch (error) {
       console.error('Bootstrap API failed:', error);
       if (!hasBootstrapDataRef.current) {
         setBeneficiaries([]);
         setParameters([]);
         setIssueTypes([]);
+        setUsers([]);
       }
       setLoadError(error instanceof Error && error.message
         ? `डेटा लोड नहीं हो सका: ${error.message}`
@@ -341,6 +346,7 @@ export default function App() {
                     beneficiaries={beneficiaries}
                     currentUser={currentUser}
                     issueTypes={issueTypes}
+                    users={users}
                     loading={loading && !hasBootstrapData}
                   />
                 </div>
