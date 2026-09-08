@@ -2,34 +2,38 @@ import React, { useMemo, useState } from 'react';
 import {
   BarChart3,
   CalendarRange,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Clock,
   Download,
   FileSpreadsheet,
+  FileText,
   Filter,
   MapPinned,
   Printer,
+  RotateCcw,
   Search,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   UserRound,
+  Users,
   X
 } from 'lucide-react';
 import { appConfig } from '../config';
 
 const REPORT_TABS = [
-  'Survey Report',
-  'Block-wise Report',
-  'Verified Beneficiary Report',
-  'Pending Survey Report',
-  'Date-wise Report'
+  { id: 'survey', label: 'सर्वे रिपोर्ट', subLabel: 'Survey Report' },
+  { id: 'block-wise', label: 'ब्लॉक-वार रिपोर्ट', subLabel: 'Block-wise Report', isSpecial: true },
+  { id: 'verified', label: 'सत्यापित हितग्राही', subLabel: 'Verified Beneficiaries' },
+  { id: 'pending', label: 'लंबित सर्वेक्षण', subLabel: 'Pending Surveys' },
+  { id: 'date', label: 'दिनांक-वार रिपोर्ट', subLabel: 'Date-wise Report' }
 ];
 
 const STATUS_OPTIONS = ['', 'Completed', 'Pending'];
-const TAB_KEY_MAP = {
-  'Survey Report': 'survey',
-  'Block-wise Report': 'block-wise',
-  'Verified Beneficiary Report': 'verified',
-  'Pending Survey Report': 'pending',
-  'Date-wise Report': 'date'
-};
 
 const SkeletonText = ({ width = '100%', className = '' }) => (
   <span className={`skeleton-line ${className}`} style={{ width }} aria-hidden="true" />
@@ -65,6 +69,7 @@ const formatBlockName = (blockName = '') => {
 
 // Document & issue detection helpers
 export const hasAadhaarIssue = (beneficiary) => {
+  if (!beneficiary) return false;
   if (beneficiary.aadhaarInfo?.type === 'remark' || Boolean(beneficiary.aadhaarInfo?.remark)) {
     return true;
   }
@@ -84,6 +89,7 @@ export const hasAadhaarIssue = (beneficiary) => {
 };
 
 export const hasRationIssue = (beneficiary) => {
+  if (!beneficiary) return false;
   if (beneficiary.rationInfo?.hasRationCard === 'no') return true;
   const responses = beneficiary.parameterResponses || {};
   const issueText = Object.values(responses)
@@ -99,17 +105,23 @@ export const hasRationIssue = (beneficiary) => {
 };
 
 export const hasValidAadhaar = (beneficiary) => {
+  if (!beneficiary) return false;
   const aadhaar = beneficiary.aadhaarInfo || {};
   if (aadhaar.type === 'aadhaar' && aadhaar.aadhaarNumber) return true;
   if (aadhaar.aadhaarNumber && String(aadhaar.aadhaarNumber).replace(/\D/g, '').length === 12) return true;
   if (aadhaar.type === 'enrollment' && aadhaar.enrollmentNumber) return true;
+  if (beneficiary.aadhaarNumber && String(beneficiary.aadhaarNumber).replace(/\D/g, '').length === 12) return true;
+  if (beneficiary.hasAadhaar === true || beneficiary.aadhaarStatus === 'Verified') return true;
   return false;
 };
 
 export const hasValidRation = (beneficiary) => {
+  if (!beneficiary) return false;
   const ration = beneficiary.rationInfo || {};
   if (ration.hasRationCard === 'yes') return true;
   if (ration.rationNumber && String(ration.rationNumber).replace(/\D/g, '').length >= 10) return true;
+  if (beneficiary.rationNumber && String(beneficiary.rationNumber).replace(/\D/g, '').length >= 10) return true;
+  if (beneficiary.hasRationCard === true || beneficiary.hasRationCard === 'yes') return true;
   return false;
 };
 
@@ -127,7 +139,6 @@ export const isAyushmanCardMade = (beneficiary) => {
 };
 
 export const hasBothDocsNoAyushman = (beneficiary) => {
-  // Has BOTH Aadhaar & Ration Card, but Ayushman card is NOT yet made
   return hasBothAadhaarAndRation(beneficiary) && !isAyushmanCardMade(beneficiary);
 };
 
@@ -144,6 +155,8 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
     return beneficiaries.map((b) => ({
       id: b.id,
       name: b.name,
+      headName: b.headName || '',
+      fatherName: b.fatherName || '',
       janpad: b.block || 'Unknown',
       gp: b.gp || 'Unknown',
       gram: b.village || 'Unknown',
@@ -160,12 +173,15 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
       return {
         id: b.id,
         name: b.name,
+        headName: b.headName || '',
+        fatherName: b.fatherName || '',
         janpad: b.block || 'Unknown',
         gp: b.gp || 'Unknown',
         gram: b.village || 'Unknown',
         aadhaarStatus: hasAadhaar ? 'Verified' : 'Pending',
         verifiedStatus: isVerified ? 'Verified Beneficiary' : 'Not Verified',
-        status: b.status || 'Pending'
+        status: b.status || 'Pending',
+        date: b.surveyDate || '-'
       };
     });
   }
@@ -176,6 +192,8 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
       .map((b) => ({
         id: b.id,
         name: b.name,
+        headName: b.headName || '',
+        fatherName: b.fatherName || '',
         janpad: b.block || 'Unknown',
         gp: b.gp || 'Unknown',
         gram: b.village || 'Unknown',
@@ -192,6 +210,8 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
       .map((b) => ({
         id: b.id,
         name: b.name,
+        headName: b.headName || '',
+        fatherName: b.fatherName || '',
         janpad: b.block || 'Unknown',
         gp: b.gp || 'Unknown',
         gram: b.village || 'Unknown',
@@ -203,6 +223,8 @@ const buildTableRows = (beneficiaries, activeTabKey) => {
   return beneficiaries.map((b) => ({
     id: b.id,
     name: b.name,
+    headName: b.headName || '',
+    fatherName: b.fatherName || '',
     janpad: b.block || 'Unknown',
     gp: b.gp || 'Unknown',
     gram: b.village || 'Unknown',
@@ -218,7 +240,7 @@ export default function ReportsDashboard({
   users = [],
   loading = false
 }) {
-  const [activeTab, setActiveTab] = useState('Survey Report');
+  const [activeTabKey, setActiveTabKey] = useState('survey');
   const [search, setSearch] = useState('');
   const [janpadFilter, setJanpadFilter] = useState('');
   const [gpFilter, setGpFilter] = useState('');
@@ -228,10 +250,10 @@ export default function ReportsDashboard({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [blockReportModalOpen, setBlockReportModalOpen] = useState(false);
   const [exportMode, setExportMode] = useState('');
-  const pageSize = 8;
 
   const distinctJanpads = useMemo(() => [...new Set(beneficiaries.map((b) => b.block).filter(Boolean))], [beneficiaries]);
   const distinctGps = useMemo(() => [...new Set(beneficiaries.filter((b) => !janpadFilter || b.block === janpadFilter).map((b) => b.gp).filter(Boolean))], [beneficiaries, janpadFilter]);
@@ -247,7 +269,6 @@ export default function ReportsDashboard({
 
   const issueMatchesSelectedType = (beneficiary, selectedIssueType) => {
     if (!selectedIssueType) return true;
-
     if (selectedIssueType === 'Aadhaar Issue') return hasAadhaarIssue(beneficiary);
     if (selectedIssueType === 'Ration Card Issue') return hasRationIssue(beneficiary);
     if (selectedIssueType === 'Survey Completed') return beneficiary.status === 'Completed';
@@ -268,9 +289,9 @@ export default function ReportsDashboard({
   };
 
   const filteredBeneficiaries = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return beneficiaries.filter((b) => {
-      const text = `${b.name || ''} ${b.id || ''} ${b.fatherName || ''} ${b.headName || ''} ${b.gp || ''} ${b.village || ''}`.toLowerCase();
+      const text = `${b.name || ''} ${b.id || ''} ${b.fatherName || ''} ${b.headName || ''} ${b.gp || ''} ${b.village || ''} ${b.block || ''}`.toLowerCase();
       const matchesSearch = !q || text.includes(q);
       const matchesJanpad = !janpadFilter || b.block === janpadFilter;
       const matchesGp = !gpFilter || b.gp === gpFilter;
@@ -372,16 +393,29 @@ export default function ReportsDashboard({
   }, [blockWiseRows]);
 
   const reportRows = useMemo(() => {
-    if (activeTab === 'Block-wise Report') {
+    if (activeTabKey === 'block-wise') {
       return blockWiseRows;
     }
-    return buildTableRows(filteredBeneficiaries, TAB_KEY_MAP[activeTab]);
-  }, [filteredBeneficiaries, activeTab, blockWiseRows]);
+    return buildTableRows(filteredBeneficiaries, activeTabKey);
+  }, [filteredBeneficiaries, activeTabKey, blockWiseRows]);
 
   const totalPages = Math.max(1, Math.ceil(reportRows.length / pageSize));
-  const paginatedRows = activeTab === 'Block-wise Report'
+  const paginatedRows = activeTabKey === 'block-wise'
     ? blockWiseRows
     : reportRows.slice((page - 1) * pageSize, page * pageSize);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (search) count++;
+    if (janpadFilter) count++;
+    if (gpFilter) count++;
+    if (gramFilter) count++;
+    if (statusFilter) count++;
+    if (issueTypeFilter) count++;
+    if (dateFrom) count++;
+    if (dateTo) count++;
+    return count;
+  }, [search, janpadFilter, gpFilter, gramFilter, statusFilter, issueTypeFilter, dateFrom, dateTo]);
 
   const resetFilters = () => {
     setSearch('');
@@ -395,10 +429,10 @@ export default function ReportsDashboard({
     setPage(1);
   };
 
-  const exportCsv = (rows, fileName) => {
-    if (!rows || rows.length === 0) return;
-    const headers = Object.keys(rows[0] || {});
-    const csv = [headers, ...rows.map((row) => headers.map((header) => escapeCsv(row[header])))]
+  const exportCsv = (dataRows, fileName) => {
+    if (!dataRows || dataRows.length === 0) return;
+    const headers = Object.keys(dataRows[0] || {});
+    const csv = [headers, ...dataRows.map((row) => headers.map((header) => escapeCsv(row[header])))]
       .map((row) => row.join(','))
       .join('\n');
 
@@ -464,7 +498,7 @@ export default function ReportsDashboard({
   };
 
   const openExportPreview = (mode) => {
-    if (activeTab === 'Block-wise Report') {
+    if (activeTabKey === 'block-wise') {
       setBlockReportModalOpen(true);
       return;
     }
@@ -473,11 +507,27 @@ export default function ReportsDashboard({
   };
 
   const handleExcelExport = () => {
-    if (activeTab === 'Block-wise Report') {
+    if (activeTabKey === 'block-wise') {
       handleDownloadBlockWiseExcel();
       return;
     }
-    exportCsv(reportRows, `${TAB_KEY_MAP[activeTab] || 'survey'}-report.csv`);
+
+    const exportData = reportRows.map((r, idx) => ({
+      'क्र. (S.No.)': idx + 1,
+      'हितग्राही ID (ID)': r.id,
+      'हितग्राही का नाम (Beneficiary Name)': r.name,
+      'मुखिया का नाम (Head of Family)': r.headName || '—',
+      'पिता/पति का नाम (Father/Husband)': r.fatherName || '—',
+      'विकासखंड (Block)': r.janpad,
+      'ग्राम पंचायत (Gram Panchayat)': r.gp,
+      'ग्राम (Village)': r.gram,
+      ...(r.aadhaarStatus ? { 'आधार स्थिति (Aadhaar)': r.aadhaarStatus } : {}),
+      ...(r.verifiedStatus ? { 'सत्यापन स्थिति (Verification)': r.verifiedStatus } : {}),
+      'सर्वे स्थिति (Status)': r.status,
+      'सर्वे दिनांक (Survey Date)': r.date
+    }));
+
+    exportCsv(exportData, `${activeTabKey}-report-${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const handlePdfExport = () => {
@@ -485,369 +535,576 @@ export default function ReportsDashboard({
   };
 
   const headersByTab = {
-    survey: ['ID', 'Name', 'Block', 'Gram Panchayat', 'Gram', 'Status', 'Survey Date'],
-    verified: ['ID', 'Name', 'Block', 'Gram Panchayat', 'Gram', 'Aadhaar Status', 'Verified Status'],
-    pending: ['ID', 'Name', 'Block', 'Gram Panchayat', 'Gram', 'Status', 'Survey Date'],
-    date: ['ID', 'Name', 'Block', 'Gram Panchayat', 'Gram', 'Survey Date', 'Status']
+    survey: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे स्थिति', 'सर्वे दिनांक'],
+    verified: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार स्थिति', 'सत्यापन स्थिति'],
+    pending: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे स्थिति', 'सर्वे दिनांक'],
+    date: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे दिनांक', 'सर्वे स्थिति']
   };
 
   const renderCellValue = (row, header) => {
-    const keyMap = {
-      ID: 'id',
-      Name: 'name',
-      Block: 'janpad',
-      'Gram Panchayat': 'gp',
-      Gram: 'gram',
-      Status: 'status',
-      'Survey Date': 'date',
-      'Aadhaar Status': 'aadhaarStatus',
-      'Verified Status': 'verifiedStatus'
-    };
+    if (header === 'ID') {
+      return <span className="report-id-code">{row.id}</span>;
+    }
 
-    const key = keyMap[header];
-    const value = row[key];
-    if (header === 'Status' && value === 'Completed') return <span className="report-badge success">Completed</span>;
-    if (header === 'Status' && value === 'Pending') return <span className="report-badge neutral">Pending</span>;
-    if (header === 'Status' && value === 'Issue Found') return <span className="report-badge danger">Issue Found</span>;
-    if (header === 'Aadhaar Status' && value === 'Verified') return <span className="report-badge success">Verified</span>;
-    if (header === 'Aadhaar Status' && value === 'Issue') return <span className="report-badge danger">Aadhaar Issue</span>;
-    if (header === 'Aadhaar Status') return <span className="report-badge neutral">Pending</span>;
-    if (header === 'Verified Status' && value === 'Verified Beneficiary') return <span className="report-badge success">Verified Beneficiary</span>;
-    if (header === 'Verified Status') return <span className="report-badge neutral">Not Verified</span>;
-    return value ?? '—';
+    if (header === 'हितग्राही का नाम') {
+      return (
+        <div className="report-ben-name">
+          <strong>{row.name}</strong>
+        </div>
+      );
+    }
+
+    if (header === 'मुखिया / पिता का नाम') {
+      return (
+        <div className="report-family-cell">
+          <div className="family-line head-line">
+            <span className="family-pill head-pill">मुखिया</span>
+            <strong className={row.headName ? 'family-val head-highlight' : 'family-val text-muted'}>
+              {row.headName || '—'}
+            </strong>
+          </div>
+          <div className="family-line father-line">
+            <span className="family-pill father-pill">पिता/पति</span>
+            <span className="family-val father-val">{row.fatherName || '—'}</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (header === 'विकासखंड') return row.janpad || '—';
+    if (header === 'ग्राम पंचायत') return row.gp || '—';
+    if (header === 'ग्राम') return row.gram || '—';
+
+    if (header === 'सर्वे स्थिति') {
+      if (row.status === 'Completed') {
+        return (
+          <span className="report-badge success">
+            <span className="badge-dot success"></span> पूर्ण (Completed)
+          </span>
+        );
+      }
+      if (row.status === 'Issue Found') {
+        return (
+          <span className="report-badge danger">
+            <span className="badge-dot danger"></span> समस्या दर्ज
+          </span>
+        );
+      }
+      return (
+        <span className="report-badge pending">
+          <span className="badge-dot pending"></span> लंबित (Pending)
+        </span>
+      );
+    }
+
+    if (header === 'सर्वे दिनांक') {
+      return <span className="report-date-cell">{formatDate(row.date)}</span>;
+    }
+
+    if (header === 'आधार स्थिति') {
+      if (row.aadhaarStatus === 'Verified') {
+        return (
+          <span className="report-badge success">
+            <span className="badge-dot success"></span> सत्यापित (Verified)
+          </span>
+        );
+      }
+      return (
+        <span className="report-badge danger">
+          <span className="badge-dot danger"></span> समस्या / शेष
+        </span>
+      );
+    }
+
+    if (header === 'सत्यापन स्थिति') {
+      if (row.verifiedStatus === 'Verified Beneficiary') {
+        return (
+          <span className="report-badge success">
+            <ShieldCheck size={13} /> दोनों उपलब्ध
+          </span>
+        );
+      }
+      return (
+        <span className="report-badge pending">
+          अनुपलब्ध / अपूर्ण
+        </span>
+      );
+    }
+
+    return row[header] ?? '—';
   };
 
-  const tableHeaders = headersByTab[TAB_KEY_MAP[activeTab]] || headersByTab.survey;
-  const issueFoundCount = filteredBeneficiaries.filter((b) => b.status === 'Issue Found').length;
-  const completedCount = filteredBeneficiaries.filter((b) => b.status === 'Completed').length;
+  const tableHeaders = headersByTab[activeTabKey] || headersByTab.survey;
   const totalMembersCount = filteredBeneficiaries.length;
+  const completedCount = filteredBeneficiaries.filter((b) => b.status === 'Completed').length;
+  const pendingCount = filteredBeneficiaries.filter((b) => b.status === 'Pending').length;
   const aadhaarIssueCount = filteredBeneficiaries.filter(hasAadhaarIssue).length;
-  const verifiedBeneficiaryCount = filteredBeneficiaries.filter(hasBothAadhaarAndRation).length;
   const rationIssueCount = filteredBeneficiaries.filter(hasRationIssue).length;
+  const verifiedBeneficiaryCount = filteredBeneficiaries.filter(hasBothAadhaarAndRation).length;
 
   const summaryCards = [
     {
       key: 'total-members',
-      label: 'कुल सदस्य',
+      label: 'कुल सदस्य (Total)',
       value: totalMembersCount,
       tone: 'slate',
-      helper: 'All records'
+      icon: Users,
+      helper: 'समस्त पंजीकृत हितग्राही',
+      isActive: !statusFilter && !issueTypeFilter,
+      onClick: () => {
+        setStatusFilter('');
+        setIssueTypeFilter('');
+        setPage(1);
+      }
+    },
+    {
+      key: 'completed-survey',
+      label: 'सर्वेक्षण पूर्ण',
+      value: completedCount,
+      tone: 'emerald',
+      icon: CheckCircle2,
+      helper: 'सर्वेक्षण कार्य संपन्न',
+      isActive: statusFilter === 'Completed',
+      onClick: () => {
+        setStatusFilter((prev) => (prev === 'Completed' ? '' : 'Completed'));
+        setPage(1);
+      }
+    },
+    {
+      key: 'pending-survey',
+      label: 'लंबित सर्वेक्षण',
+      value: pendingCount,
+      tone: 'amber',
+      icon: Clock,
+      helper: 'सर्वेक्षण शेष रिकॉर्ड',
+      isActive: statusFilter === 'Pending',
+      onClick: () => {
+        setStatusFilter((prev) => (prev === 'Pending' ? '' : 'Pending'));
+        setPage(1);
+      }
     },
     {
       key: 'aadhaar-issue',
       label: 'Aadhaar Issue',
       value: aadhaarIssueCount,
       tone: 'rose',
-      helper: 'Needs review'
+      icon: ShieldAlert,
+      helper: 'आधार सुधार / अनुपलब्ध',
+      isActive: issueTypeFilter === 'Aadhaar Issue',
+      onClick: () => {
+        setIssueTypeFilter((prev) => (prev === 'Aadhaar Issue' ? '' : 'Aadhaar Issue'));
+        setPage(1);
+      }
     },
     {
       key: 'verified-beneficiary',
       label: 'Verified Beneficiary',
       value: verifiedBeneficiaryCount,
-      tone: 'emerald',
-      helper: 'Aadhaar + Ration'
-    },
-    {
-      key: 'ration-issue',
-      label: 'Ration Issue',
-      value: rationIssueCount,
-      tone: 'amber',
-      helper: 'No ration card'
-    },
-    {
-      key: 'completed-survey',
-      label: 'Completed Survey',
-      value: completedCount,
       tone: 'blue',
-      helper: `Issue Found: ${issueFoundCount} • Completed: ${completedCount}`
-    }
-  ];
-
-  const exportTiles = [
-    {
-      key: 'block-detailed-modal',
-      label: 'Block Wise Detailed Report',
-      icon: Sparkles,
-      highlight: true,
-      action: () => setBlockReportModalOpen(true)
-    },
-    {
-      key: 'block-excel',
-      label: 'Block Excel',
-      icon: FileSpreadsheet,
-      action: () => setBlockReportModalOpen(true)
-    },
-    {
-      key: 'filtered-excel',
-      label: 'Filtered Excel',
-      icon: FileSpreadsheet,
-      action: () => openExportPreview('excel')
-    },
-    {
-      key: 'block-pdf',
-      label: 'Block PDF',
-      icon: Printer,
-      action: () => {
-        setActiveTab('Block-wise Report');
-        setTimeout(() => window.print(), 200);
-      }
-    },
-    {
-      key: 'aadhaar-issue-excel',
-      label: 'Aadhaar Issue',
-      icon: FileSpreadsheet,
-      isActive: issueTypeFilter === 'Aadhaar Issue',
-      action: () => {
-        setIssueTypeFilter('Aadhaar Issue');
-        setPage(1);
-        openExportPreview('excel');
-      }
-    },
-    {
-      key: 'ration-issue-excel',
-      label: 'Ration Card Issue',
-      icon: FileSpreadsheet,
-      isActive: issueTypeFilter === 'Ration Card Issue',
-      action: () => {
-        setIssueTypeFilter('Ration Card Issue');
-        setPage(1);
-        openExportPreview('excel');
-      }
-    },
-    {
-      key: 'survey-completed-excel',
-      label: 'Survey Completed',
-      icon: FileSpreadsheet,
-      isActive: statusFilter === 'Completed',
-      action: () => {
-        setStatusFilter('Completed');
-        setPage(1);
-        openExportPreview('excel');
-      }
-    },
-    {
-      key: 'survey-pending-excel',
-      label: 'Survey Pending',
-      icon: FileSpreadsheet,
-      isActive: statusFilter === 'Pending',
-      action: () => {
-        setStatusFilter('Pending');
-        setPage(1);
-        openExportPreview('excel');
-      }
-    },
-    {
-      key: 'verified-beneficiary-excel',
-      label: 'Verified Beneficiary',
-      icon: FileSpreadsheet,
+      icon: ShieldCheck,
+      helper: 'आधार + राशन कार्ड दोनों',
       isActive: issueTypeFilter === 'Verified Beneficiary',
-      action: () => {
-        setIssueTypeFilter('Verified Beneficiary');
+      onClick: () => {
+        setIssueTypeFilter((prev) => (prev === 'Verified Beneficiary' ? '' : 'Verified Beneficiary'));
         setPage(1);
-        openExportPreview('excel');
       }
     }
   ];
 
   return (
     <div className="report-shell">
-      <section className="report-summary-card">
-        <div className="report-title-row">
-          <BarChart3 size={32} />
-          <h1>{appConfig.appName} Reports</h1>
+      {/* Executive Header Banner */}
+      <section className="report-header-banner">
+        <div className="report-header-left">
+          <div className="report-header-icon">
+            <BarChart3 size={28} />
+          </div>
+          <div>
+            <h1 className="report-header-title">आयुष्मान भारत सर्वेक्षण - रिपोर्ट्स एवं सांख्यिकी</h1>
+            <p className="report-header-desc">
+              जिलेवार एवं विकासखंड-वार समग्र डेटा विश्लेषण, हितग्राही सत्यापन एवं एक्सेल रिपोर्ट
+            </p>
+          </div>
         </div>
-        <p className="report-subtitle">
-          {currentUser.district || appConfig.currentUser.district || 'All'} District • {beneficiaries.length} Records
-        </p>
+        <div className="report-header-meta">
+          <span className="report-meta-badge district">
+            <MapPinned size={14} />
+            {currentUser.district || appConfig.currentUser.district || 'दंतेवाड़ा'} जिला
+          </span>
+          <span className="report-meta-badge records">
+            <Users size={14} />
+            {beneficiaries.length.toLocaleString('en-IN')} कुल रिकॉर्ड
+          </span>
+        </div>
       </section>
 
-      {/* KPI Cards */}
+      {/* Modern Interactive KPI Summary Grid */}
       <div className="report-kpi-grid">
-        {summaryCards.map((card) => (
-          <div key={card.key} className={`report-kpi-card ${card.tone}`}>
-            <div className="report-kpi-label">{card.label}</div>
-            <div className="report-kpi-value">
-              {loading ? <SkeletonText width="58px" className="skeleton-value" /> : card.value}
-            </div>
-            <div className="report-kpi-helper">
-              {loading ? <SkeletonText width="112px" /> : card.helper}
-            </div>
-          </div>
-        ))}
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <button
+              key={card.key}
+              type="button"
+              className={`report-kpi-card ${card.tone} ${card.isActive ? 'active-filter' : ''}`}
+              onClick={card.onClick}
+              title={`Click to filter by ${card.label}`}
+            >
+              <div className="report-kpi-top">
+                <span className="report-kpi-label">{card.label}</span>
+                <span className="report-kpi-icon-wrap">
+                  <Icon size={18} />
+                </span>
+              </div>
+              <div className="report-kpi-value">
+                {loading ? <SkeletonText width="58px" className="skeleton-value" /> : card.value.toLocaleString('en-IN')}
+              </div>
+              <div className="report-kpi-footer">
+                <span className="report-kpi-helper">
+                  {loading ? <SkeletonText width="90px" /> : card.helper}
+                </span>
+                {card.isActive && <span className="kpi-filter-tag">फ़िल्टर सक्रिय</span>}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Export & Quick Actions Bar */}
-      <div className="report-export-grid" aria-label="Report export actions">
-        {exportTiles.map(({ key, label, icon: Icon, action, highlight, isActive }) => (
-          <button
-            key={key}
-            type="button"
-            className={`report-export-tile ${highlight ? 'tile-highlight' : ''} ${isActive ? 'active' : ''}`}
-            onClick={action}
-          >
-            {Icon && (
-              <span className="report-export-icon">
-                <Icon size={14} className={key === 'block-detailed-modal' ? 'tab-sparkle' : ''} />
-              </span>
-            )}
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Main Filter & Navigation Panel */}
-      <div className="report-panel card">
-        <div className="report-toolbar-header">
-          <div className="report-tab-selector">
-            {REPORT_TABS.map((tab) => (
+      {/* Main Tab Bar & Action Controls */}
+      <div className="report-control-bar card">
+        <div className="report-nav-segment">
+          {REPORT_TABS.map((tab) => {
+            const isSelected = activeTabKey === tab.id;
+            return (
               <button
-                key={tab}
+                key={tab.id}
                 type="button"
-                className={`report-tab-pill ${activeTab === tab ? 'active' : ''}`}
+                className={`report-nav-tab ${isSelected ? 'selected' : ''} ${tab.isSpecial ? 'special-tab' : ''}`}
                 onClick={() => {
-                  setActiveTab(tab);
+                  setActiveTabKey(tab.id);
                   setPage(1);
                 }}
               >
-                {tab === 'Block-wise Report' ? <Sparkles size={14} className="tab-sparkle" /> : null}
-                <span>{tab}</span>
+                {tab.isSpecial && <Sparkles size={14} className="tab-sparkle" />}
+                <span className="nav-tab-label">{tab.label}</span>
+                <span className="nav-tab-sublabel">{tab.subLabel}</span>
               </button>
-            ))}
-          </div>
-
-          <div className="report-action-row">
-            {activeTab === 'Block-wise Report' ? (
-              <button
-                type="button"
-                className="report-action-btn primary"
-                onClick={() => setBlockReportModalOpen(true)}
-              >
-                <FileSpreadsheet size={16} /> Block Wise Preview & Download
-              </button>
-            ) : null}
-            <button type="button" className="report-action-btn light" onClick={resetFilters}>
-              Reset Filter
-            </button>
-            <button type="button" className="report-action-btn light" onClick={() => openExportPreview('excel')}>
-              <FileSpreadsheet size={16} /> Excel Export
-            </button>
-            <button type="button" className="report-action-btn light" onClick={() => openExportPreview('pdf')}>
-              <Printer size={16} /> PDF Export
-            </button>
-          </div>
+            );
+          })}
         </div>
 
-        {activeTab !== 'Block-wise Report' && (
-          <>
-            <div className="report-search-row">
-              <div className="report-search-box">
-                <Search size={16} />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                  placeholder="Search beneficiary, ID, GP, village..."
-                />
-              </div>
-            </div>
+        <div className="report-action-cluster">
+          {/* Block-wise Modal Launcher */}
+          <button
+            type="button"
+            className="action-pill-btn highlight"
+            onClick={() => setBlockReportModalOpen(true)}
+            title="ब्लॉक-वार विस्तृत एक्सेल एवं प्रीव्यू"
+          >
+            <Sparkles size={15} />
+            <span>ब्लॉक रिपोर्ट (Preview & Excel)</span>
+          </button>
 
-            <div className="report-filter-grid">
-              <label>
-                <span>Block</span>
-                <select value={janpadFilter} onChange={(e) => { setJanpadFilter(e.target.value); setGpFilter(''); setGramFilter(''); setPage(1); }}>
-                  <option value="">All</option>
-                  {distinctJanpads.map((janpad) => (
-                    <option key={janpad} value={janpad}>{janpad}</option>
-                  ))}
-                </select>
-              </label>
+          {/* Export Current Table to Excel */}
+          <button
+            type="button"
+            className="action-pill-btn secondary"
+            onClick={handleExcelExport}
+            title="वर्तमान डेटा को एक्सेल में डाउनलोड करें"
+          >
+            <FileSpreadsheet size={15} />
+            <span>एक्सेल डाउनलोड</span>
+          </button>
 
-              <label>
-                <span>Gram Panchayat</span>
-                <select value={gpFilter} onChange={(e) => { setGpFilter(e.target.value); setGramFilter(''); setPage(1); }}>
-                  <option value="">All</option>
-                  {distinctGps.map((gp) => (
-                    <option key={gp} value={gp}>{gp}</option>
-                  ))}
-                </select>
-              </label>
+          {/* Print / PDF Export */}
+          <button
+            type="button"
+            className="action-pill-btn secondary"
+            onClick={handlePdfExport}
+            title="प्रिंट या पीडीएफ सुरक्षित करें"
+          >
+            <Printer size={15} />
+            <span>प्रिंट / PDF</span>
+          </button>
 
-              <label>
-                <span>Gram</span>
-                <select value={gramFilter} onChange={(e) => { setGramFilter(e.target.value); setPage(1); }}>
-                  <option value="">All</option>
-                  {distinctGrams.map((gram) => (
-                    <option key={gram} value={gram}>{gram}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Survey Status</span>
-                <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
-                  <option value="">All</option>
-                  {STATUS_OPTIONS.filter(Boolean).map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Issue Type</span>
-                <select value={issueTypeFilter} onChange={(e) => { setIssueTypeFilter(e.target.value); setPage(1); }}>
-                  <option value="">All</option>
-                  {issueTypeOptions.map((issueType) => (
-                    <option key={issueType} value={issueType}>{issueType}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span>Date Range</span>
-                <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
-              </label>
-
-              <label>
-                <span>To</span>
-                <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
-              </label>
-            </div>
-          </>
-        )}
+          {/* Reset Filters */}
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              className="action-pill-btn reset"
+              onClick={resetFilters}
+              title="सभी फ़िल्टर साफ़ करें"
+            >
+              <RotateCcw size={14} />
+              <span>रीसेट ({activeFiltersCount})</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Main Data Table */}
+      {/* Search & Filter Drawer (shown for beneficiary tabs) */}
+      {activeTabKey !== 'block-wise' && (
+        <div className="report-filter-panel card">
+          <div className="report-search-and-chips">
+            <div className="report-search-input-wrap">
+              <Search size={18} className="search-leading-icon" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="हितग्राही, मुखिया, पिता का नाम, ID, ग्राम या ब्लॉक से खोजें..."
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setSearch('')}
+                  aria-label="Clear search"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Status Chips */}
+            <div className="report-quick-chips">
+              <span className="chips-title">त्वरित फ़िल्टर:</span>
+              <button
+                type="button"
+                className={`quick-chip ${!statusFilter && !issueTypeFilter ? 'active' : ''}`}
+                onClick={() => {
+                  setStatusFilter('');
+                  setIssueTypeFilter('');
+                  setPage(1);
+                }}
+              >
+                सभी ({beneficiaries.length})
+              </button>
+              <button
+                type="button"
+                className={`quick-chip ${statusFilter === 'Pending' ? 'active' : ''}`}
+                onClick={() => {
+                  setStatusFilter((p) => (p === 'Pending' ? '' : 'Pending'));
+                  setPage(1);
+                }}
+              >
+                लंबित ({pendingCount})
+              </button>
+              <button
+                type="button"
+                className={`quick-chip ${statusFilter === 'Completed' ? 'active' : ''}`}
+                onClick={() => {
+                  setStatusFilter((p) => (p === 'Completed' ? '' : 'Completed'));
+                  setPage(1);
+                }}
+              >
+                पूर्ण ({completedCount})
+              </button>
+              <button
+                type="button"
+                className={`quick-chip ${issueTypeFilter === 'Aadhaar Issue' ? 'active' : ''}`}
+                onClick={() => {
+                  setIssueTypeFilter((p) => (p === 'Aadhaar Issue' ? '' : 'Aadhaar Issue'));
+                  setPage(1);
+                }}
+              >
+                आधार समस्या ({aadhaarIssueCount})
+              </button>
+              <button
+                type="button"
+                className={`quick-chip ${issueTypeFilter === 'Ration Card Issue' ? 'active' : ''}`}
+                onClick={() => {
+                  setIssueTypeFilter((p) => (p === 'Ration Card Issue' ? '' : 'Ration Card Issue'));
+                  setPage(1);
+                }}
+              >
+                राशन समस्या ({rationIssueCount})
+              </button>
+              <button
+                type="button"
+                className={`quick-chip ${issueTypeFilter === 'Verified Beneficiary' ? 'active' : ''}`}
+                onClick={() => {
+                  setIssueTypeFilter((p) => (p === 'Verified Beneficiary' ? '' : 'Verified Beneficiary'));
+                  setPage(1);
+                }}
+              >
+                सत्यापित ({verifiedBeneficiaryCount})
+              </button>
+            </div>
+          </div>
+
+          {/* Detailed Dropdown Filters */}
+          <div className="report-filter-dropdown-grid">
+            <div className="filter-field">
+              <label>विकासखंड (Block)</label>
+              <select
+                value={janpadFilter}
+                onChange={(e) => {
+                  setJanpadFilter(e.target.value);
+                  setGpFilter('');
+                  setGramFilter('');
+                  setPage(1);
+                }}
+              >
+                <option value="">सभी ब्लॉक (All)</option>
+                {distinctJanpads.map((janpad) => (
+                  <option key={janpad} value={janpad}>
+                    {janpad}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-field">
+              <label>ग्राम पंचायत (Gram Panchayat)</label>
+              <select
+                value={gpFilter}
+                onChange={(e) => {
+                  setGpFilter(e.target.value);
+                  setGramFilter('');
+                  setPage(1);
+                }}
+              >
+                <option value="">सभी ग्राम पंचायत (All)</option>
+                {distinctGps.map((gp) => (
+                  <option key={gp} value={gp}>
+                    {gp}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-field">
+              <label>ग्राम (Village)</label>
+              <select
+                value={gramFilter}
+                onChange={(e) => {
+                  setGramFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">सभी ग्राम (All)</option>
+                {distinctGrams.map((gram) => (
+                  <option key={gram} value={gram}>
+                    {gram}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-field">
+              <label>सर्वे स्थिति (Status)</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">सभी स्थितियां (All)</option>
+                {STATUS_OPTIONS.filter(Boolean).map((status) => (
+                  <option key={status} value={status}>
+                    {status === 'Completed' ? 'Completed (पूर्ण)' : 'Pending (लंबित)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-field">
+              <label>समस्या प्रकार (Issue Type)</label>
+              <select
+                value={issueTypeFilter}
+                onChange={(e) => {
+                  setIssueTypeFilter(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">सभी (All Issues)</option>
+                {issueTypeOptions.map((issueType) => (
+                  <option key={issueType} value={issueType}>
+                    {issueType}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-field">
+              <label>दिनांक से (From)</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            <div className="filter-field">
+              <label>दिनांक तक (To)</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Data Table Section */}
       <div className="report-table-panel card">
-        <div className="report-table-header">
-          <div>
-            <h3>{activeTab}</h3>
-            <span>
+        <div className="report-table-meta-row">
+          <div className="table-heading-group">
+            <h3 className="table-heading-title">
+              {REPORT_TABS.find((t) => t.id === activeTabKey)?.label || 'सर्वे रिपोर्ट'}
+            </h3>
+            <span className="table-heading-count">
               {loading ? (
-                <SkeletonText width="78px" />
-              ) : activeTab === 'Block-wise Report' ? (
-                `${blockWiseRows.length} blocks • Total ${blockWiseTotals.total} beneficiaries`
+                <SkeletonText width="100px" />
+              ) : activeTabKey === 'block-wise' ? (
+                `${blockWiseRows.length} विकासखंड • कुल ${blockWiseTotals.total.toLocaleString('en-IN')} हितग्राही`
               ) : (
-                `${reportRows.length} records`
+                `कुल ${reportRows.length.toLocaleString('en-IN')} रिकॉर्ड्स प्रदर्शित`
               )}
             </span>
           </div>
 
-          {activeTab === 'Block-wise Report' && (
+          {activeTabKey === 'block-wise' ? (
             <button
               type="button"
-              className="report-preview-launch-btn"
-              onClick={() => setBlockReportModalOpen(true)}
+              className="action-pill-btn highlight"
+              onClick={handleDownloadBlockWiseExcel}
             >
               <Download size={15} /> Final Download Excel
             </button>
+          ) : (
+            <div className="table-header-page-size">
+              <span>प्रति पृष्ठ:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value={8}>8</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           )}
         </div>
 
-        {activeTab === 'Block-wise Report' ? (
-          /* Detailed Block-Wise Report Table */
+        {activeTabKey === 'block-wise' ? (
+          /* Detailed Government Standard Block-Wise Report Table */
           <div className="table-container block-table-container">
             <table className="custom-table block-report-table">
               <thead>
@@ -866,33 +1123,33 @@ export default function ReportsDashboard({
                 {blockWiseRows.map((row) => (
                   <tr key={row.block}>
                     <td className="cell-block-title">{row.block}</td>
-                    <td className="cell-num">{row.total}</td>
-                    <td className="cell-num">{row.pending}</td>
-                    <td className="cell-num">{row.surveyDone}</td>
-                    <td className="cell-num">{row.aadhaarIssue}</td>
-                    <td className="cell-num">{row.rationIssue}</td>
-                    <td className="cell-num">{row.bothAvailable}</td>
-                    <td className="cell-num cell-highlight">{row.bothNoAyushman}</td>
+                    <td className="cell-num">{row.total.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{row.pending.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{row.surveyDone.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{row.aadhaarIssue.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{row.rationIssue.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{row.bothAvailable.toLocaleString('en-IN')}</td>
+                    <td className="cell-num cell-highlight">{row.bothNoAyushman.toLocaleString('en-IN')}</td>
                   </tr>
                 ))}
                 <tr className="block-report-total-row">
                   <td className="cell-block-title font-black">TOTAL</td>
-                  <td className="cell-num">{blockWiseTotals.total}</td>
-                  <td className="cell-num">{blockWiseTotals.pending}</td>
-                  <td className="cell-num">{blockWiseTotals.surveyDone}</td>
-                  <td className="cell-num">{blockWiseTotals.aadhaarIssue}</td>
-                  <td className="cell-num">{blockWiseTotals.rationIssue}</td>
-                  <td className="cell-num">{blockWiseTotals.bothAvailable}</td>
-                  <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman}</td>
+                  <td className="cell-num">{blockWiseTotals.total.toLocaleString('en-IN')}</td>
+                  <td className="cell-num">{blockWiseTotals.pending.toLocaleString('en-IN')}</td>
+                  <td className="cell-num">{blockWiseTotals.surveyDone.toLocaleString('en-IN')}</td>
+                  <td className="cell-num">{blockWiseTotals.aadhaarIssue.toLocaleString('en-IN')}</td>
+                  <td className="cell-num">{blockWiseTotals.rationIssue.toLocaleString('en-IN')}</td>
+                  <td className="cell-num">{blockWiseTotals.bothAvailable.toLocaleString('en-IN')}</td>
+                  <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         ) : (
-          /* Standard Paginated Table for other tabs */
+          /* Standard Paginated Table with Mukhiya/Father Columns */
           <>
             <div className="table-container">
-              <table className="custom-table report-table">
+              <table className="custom-table modern-report-table">
                 <thead>
                   <tr>
                     {tableHeaders.map((header) => (
@@ -905,8 +1162,8 @@ export default function ReportsDashboard({
                     reportSkeletonRows.map((row) => (
                       <tr key={`report-skeleton-${row}`}>
                         {tableHeaders.map((header, index) => (
-                          <td key={`report-skeleton-${row}-${header}`} data-label={header}>
-                            <SkeletonText width={index === 1 ? '140px' : index === 0 ? '70px' : '96px'} />
+                          <td key={`report-skeleton-${row}-${header}`}>
+                            <SkeletonText width={index === 1 ? '140px' : index === 2 ? '160px' : '90px'} />
                           </td>
                         ))}
                       </tr>
@@ -914,14 +1171,20 @@ export default function ReportsDashboard({
                   ) : paginatedRows.length === 0 ? (
                     <tr>
                       <td colSpan={tableHeaders.length} className="empty-state-table">
-                        No records found for this filter.
+                        <div className="empty-state-box">
+                          <Filter size={32} className="empty-icon" />
+                          <p>चयनित फ़िल्टर के अनुसार कोई रिकॉर्ड उपलब्ध नहीं है।</p>
+                          <button type="button" className="action-pill-btn reset" onClick={resetFilters}>
+                            <RotateCcw size={14} /> फ़िल्टर हटाएं
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ) : (
                     paginatedRows.map((row, index) => (
-                      <tr key={`${activeTab}-${index}`}>
+                      <tr key={`${activeTabKey}-${row.id || index}`}>
                         {tableHeaders.map((header) => (
-                          <td key={`${activeTab}-${header}-${index}`} data-label={header}>
+                          <td key={`${activeTabKey}-${header}-${index}`}>
                             {renderCellValue(row, header)}
                           </td>
                         ))}
@@ -932,15 +1195,60 @@ export default function ReportsDashboard({
               </table>
             </div>
 
-            <div className="report-pagination">
-              <button type="button" disabled={page === 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>
-                Previous
-              </button>
-              <span>Page {page} of {totalPages}</span>
-              <button type="button" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>
-                Next
-              </button>
-            </div>
+            {/* Modern Pagination Controls */}
+            {reportRows.length > 0 && (
+              <div className="modern-pagination-bar">
+                <div className="pagination-info">
+                  प्रदर्शित <strong>{(page - 1) * pageSize + 1} - {Math.min(page * pageSize, reportRows.length)}</strong> (कुल <strong>{reportRows.length.toLocaleString('en-IN')}</strong>)
+                </div>
+
+                <div className="pagination-nav-group">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page === 1}
+                    onClick={() => setPage(1)}
+                    title="प्रथम पृष्ठ"
+                  >
+                    <ChevronsLeft size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    title="पिछला पृष्ठ"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+
+                  <div className="page-indicator-pill">
+                    पृष्ठ <strong>{page}</strong> / <span>{totalPages}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    title="अगला पृष्ठ"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(totalPages)}
+                    title="अंतिम पृष्ठ"
+                  >
+                    <ChevronsRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -951,20 +1259,23 @@ export default function ReportsDashboard({
           <div className="report-preview-card" onClick={(e) => e.stopPropagation()}>
             <div className="report-preview-header">
               <div>
-                <h3>{activeTab}</h3>
+                <h3>{REPORT_TABS.find((t) => t.id === activeTabKey)?.label || 'Report'}</h3>
                 <span>{exportMode ? `${exportMode === 'excel' ? 'Excel' : 'PDF'} preview` : 'Printable preview'}</span>
               </div>
               <button
                 type="button"
                 className="report-close-button"
-                onClick={() => { setPreviewOpen(false); setExportMode(''); }}
+                onClick={() => {
+                  setPreviewOpen(false);
+                  setExportMode('');
+                }}
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="table-container preview-table-wrap">
-              <table className="custom-table report-table">
+              <table className="custom-table modern-report-table">
                 <thead>
                   <tr>
                     {tableHeaders.map((header) => (
@@ -975,13 +1286,15 @@ export default function ReportsDashboard({
                 <tbody>
                   {paginatedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={tableHeaders.length} className="empty-state-table">No preview data available.</td>
+                      <td colSpan={tableHeaders.length} className="empty-state-table">
+                        No preview data available.
+                      </td>
                     </tr>
                   ) : (
                     paginatedRows.map((row, index) => (
                       <tr key={`preview-row-${index}`}>
                         {tableHeaders.map((header) => (
-                          <td key={`preview-cell-${header}-${index}`} data-label={header}>
+                          <td key={`preview-cell-${header}-${index}`}>
                             {renderCellValue(row, header)}
                           </td>
                         ))}
@@ -993,12 +1306,19 @@ export default function ReportsDashboard({
             </div>
 
             <div className="report-preview-actions">
-              <button type="button" className="report-action-btn light" onClick={() => { setPreviewOpen(false); setExportMode(''); }}>
-                Close
+              <button
+                type="button"
+                className="action-pill-btn secondary"
+                onClick={() => {
+                  setPreviewOpen(false);
+                  setExportMode('');
+                }}
+              >
+                बंद करें
               </button>
               <button
                 type="button"
-                className="report-action-btn"
+                className="action-pill-btn highlight"
                 onClick={() => {
                   if (exportMode === 'pdf') {
                     handlePdfExport();
@@ -1009,14 +1329,22 @@ export default function ReportsDashboard({
                   setExportMode('');
                 }}
               >
-                {exportMode === 'pdf' ? <><Printer size={16} /> Download PDF</> : <><Download size={16} /> Download Excel</>}
+                {exportMode === 'pdf' ? (
+                  <>
+                    <Printer size={16} /> Download PDF
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} /> Download Excel
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* PIXEL-PERFECT BLOCK WISE REPORT MODAL MATCHING USER SCREENSHOT */}
+      {/* PIXEL-PERFECT BLOCK WISE REPORT MODAL MATCHING GOVT FORMAT */}
       {blockReportModalOpen && (
         <div className="block-report-modal-overlay" onClick={() => setBlockReportModalOpen(false)}>
           <div className="block-report-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1056,24 +1384,24 @@ export default function ReportsDashboard({
                   {blockWiseRows.map((row) => (
                     <tr key={`modal-${row.block}`}>
                       <td className="cell-block-title">{row.block}</td>
-                      <td className="cell-num">{row.total}</td>
-                      <td className="cell-num">{row.pending}</td>
-                      <td className="cell-num">{row.surveyDone}</td>
-                      <td className="cell-num">{row.aadhaarIssue}</td>
-                      <td className="cell-num">{row.rationIssue}</td>
-                      <td className="cell-num">{row.bothAvailable}</td>
-                      <td className="cell-num cell-highlight">{row.bothNoAyushman}</td>
+                      <td className="cell-num">{row.total.toLocaleString('en-IN')}</td>
+                      <td className="cell-num">{row.pending.toLocaleString('en-IN')}</td>
+                      <td className="cell-num">{row.surveyDone.toLocaleString('en-IN')}</td>
+                      <td className="cell-num">{row.aadhaarIssue.toLocaleString('en-IN')}</td>
+                      <td className="cell-num">{row.rationIssue.toLocaleString('en-IN')}</td>
+                      <td className="cell-num">{row.bothAvailable.toLocaleString('en-IN')}</td>
+                      <td className="cell-num cell-highlight">{row.bothNoAyushman.toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                   <tr className="block-report-total-row">
                     <td className="cell-block-title font-black">TOTAL</td>
-                    <td className="cell-num">{blockWiseTotals.total}</td>
-                    <td className="cell-num">{blockWiseTotals.pending}</td>
-                    <td className="cell-num">{blockWiseTotals.surveyDone}</td>
-                    <td className="cell-num">{blockWiseTotals.aadhaarIssue}</td>
-                    <td className="cell-num">{blockWiseTotals.rationIssue}</td>
-                    <td className="cell-num">{blockWiseTotals.bothAvailable}</td>
-                    <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman}</td>
+                    <td className="cell-num">{blockWiseTotals.total.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{blockWiseTotals.pending.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{blockWiseTotals.surveyDone.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{blockWiseTotals.aadhaarIssue.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{blockWiseTotals.rationIssue.toLocaleString('en-IN')}</td>
+                    <td className="cell-num">{blockWiseTotals.bothAvailable.toLocaleString('en-IN')}</td>
+                    <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman.toLocaleString('en-IN')}</td>
                   </tr>
                 </tbody>
               </table>
