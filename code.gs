@@ -158,8 +158,8 @@ function mapBeneficiaryRow(rawRow, index) {
   const gp = clean(getValue(row, ['ग्राम पंचायत', 'Gram Panchayat', 'gp']));
   const village = clean(getValue(row, ['ग्राम', 'Village', 'village']));
   const name = clean(getValue(row, ['सदस्य का नाम', 'Member Name', 'name']));
-  const fatherName = clean(getValue(row, ['पिता/पति का नाम', 'Father Name', 'fatherName']));
-  const headName = clean(getValue(row, ['मुखिया का नाम', 'Head of Family', 'headOfFamilyName']));
+  const fatherName = clean(getValue(row, ['पिता/पति का नाम', 'पिता/पति', 'Father Name', 'fatherName']));
+  const headName = clean(getValue(row, ['मुखिया का नाम', 'मुखिया', 'Head of Family', 'headOfFamilyName', 'headName', 'mukhiyaName', 'mukhiya']));
   const age = mapAge(getValue(row, ['आयु', 'Age', 'age']));
   const gender = mapGender(getValue(row, ['लिंग', 'Gender', 'gender']));
   const mobile = isValidIndianMobile(getValue(row, ['मोबाइल नंबर', 'Mobile Number', 'mobile']));
@@ -192,6 +192,7 @@ function mapBeneficiaryRow(rawRow, index) {
     id,
     name: name || `Beneficiary ${index + 1}`,
     fatherName: fatherName || headName || 'N/A',
+    headName: headName || '',
     age,
     gender,
     mobile,

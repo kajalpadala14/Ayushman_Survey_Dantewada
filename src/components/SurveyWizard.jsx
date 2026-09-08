@@ -339,8 +339,12 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
               <div style={{ fontWeight: '600' }}>{beneficiary.name}</div>
             </div>
             <div>
-              <span className="form-label">Father / Husband Name</span>
-              <div>{beneficiary.fatherName}</div>
+              <span className="form-label">Head of Family (मुखिया का नाम)</span>
+              <div style={{ fontWeight: '600' }}>{beneficiary.headName || '-'}</div>
+            </div>
+            <div>
+              <span className="form-label">Father / Husband Name (पिता/पति का नाम)</span>
+              <div>{beneficiary.fatherName || '-'}</div>
             </div>
             <div>
               <span className="form-label">Age / Gender</span>
@@ -400,7 +404,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0 0 0.3rem 0', color: 'var(--neutral-900)' }}>आधार जानकारी भरें</h2>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--neutral-600)' }}>
-                  {beneficiary.name} - मुखिया: {beneficiary.fatherName} / पिता/पति का नाम: {beneficiary.fatherName} - {beneficiary.village}, {beneficiary.block}
+                  {beneficiary.name} - मुखिया: {beneficiary.headName || '-'} / पिता/पति का नाम: {beneficiary.fatherName || '-'} - {beneficiary.village}, {beneficiary.block}
                 </p>
               </div>
               <button type="button" className="aadhaar-close-btn" onClick={onCancel} aria-label="बंद करें" style={{ marginLeft: 'auto' }}>
@@ -796,6 +800,8 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
               <div><strong>Name:</strong> {beneficiary.name}</div>
               <div><strong>ID:</strong> {beneficiary.id}</div>
               <div><strong>Village:</strong> {beneficiary.village}</div>
+              <div><strong>Mukhiya:</strong> {beneficiary.headName || '-'}</div>
+              <div><strong>Father/Husband:</strong> {beneficiary.fatherName || '-'}</div>
             </div>
           </div>
 

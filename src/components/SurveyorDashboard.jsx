@@ -142,6 +142,7 @@ export default function SurveyorDashboard({
       String(b.name || '').toLowerCase().includes(query) ||
       String(b.id || '').toLowerCase().includes(query) ||
       (b.fatherName || '').toLowerCase().includes(query) ||
+      (b.headName || '').toLowerCase().includes(query) ||
       (b.gp || '').toLowerCase().includes(query) ||
       (b.village || '').toLowerCase().includes(query) ||
       String(b.mobile || '').includes(search);
@@ -588,8 +589,8 @@ export default function SurveyorDashboard({
                       <td data-label="गांव">{beneficiary.village}</td>
                       <td data-label="मुखिया">
                         <div className="guardian-cell">
-                          <span>मुखिया: {beneficiary.fatherName}</span>
-                          <strong>पिता/पति का नाम: {beneficiary.fatherName}</strong>
+                          <span>मुखिया: {beneficiary.headName || '-'}</span>
+                          <strong>पिता/पति का नाम: {beneficiary.fatherName || '-'}</strong>
                         </div>
                       </td>
                       <td data-label="सदस्य" className="member-name">{beneficiary.name}</td>

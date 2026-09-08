@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    port: 5173
+    port: 5173,
+    proxy: {
+      '/api/gviz': {
+        target: 'https://docs.google.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/gviz/, '')
+      }
+    }
   }
 })

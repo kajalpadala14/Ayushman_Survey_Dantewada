@@ -21,7 +21,7 @@ export default function AdminDashboard({
   // New beneficiary state
   const [newBen, setNewBen] = useState({
     id: `AYU-BEN-${Math.floor(100000 + Math.random() * 900000)}`,
-    name: '', fatherName: '', age: '', gender: 'Male', mobile: '', address: '', district: 'Lucknow', block: 'Chinhat', gp: 'Mati', village: 'Mati Gaon', assignedSurveyorId: 'SURV-101'
+    name: '', headName: '', fatherName: '', age: '', gender: 'Male', mobile: '', address: '', district: 'Lucknow', block: 'Chinhat', gp: 'Mati', village: 'Mati Gaon', assignedSurveyorId: 'SURV-101'
   });
   const [showAddBenModal, setShowAddBenModal] = useState(false);
 
@@ -36,7 +36,7 @@ export default function AdminDashboard({
     setShowAddBenModal(false);
     setNewBen({
       id: `AYU-BEN-${Math.floor(100000 + Math.random() * 900000)}`,
-      name: '', fatherName: '', age: '', gender: 'Male', mobile: '', address: '', district: 'Lucknow', block: 'Chinhat', gp: 'Mati', village: 'Mati Gaon', assignedSurveyorId: 'SURV-101'
+      name: '', headName: '', fatherName: '', age: '', gender: 'Male', mobile: '', address: '', district: 'Lucknow', block: 'Chinhat', gp: 'Mati', village: 'Mati Gaon', assignedSurveyorId: 'SURV-101'
     });
   };
 
@@ -215,6 +215,10 @@ export default function AdminDashboard({
                   <div className="form-group">
                     <label className="form-label">Full Name *</label>
                     <input className="form-control" required value={newBen.name} onChange={e => setNewBen({...newBen, name: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Head of Family (मुखिया का नाम)</label>
+                    <input className="form-control" value={newBen.headName} onChange={e => setNewBen({...newBen, headName: e.target.value})} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Father / Husband Name *</label>

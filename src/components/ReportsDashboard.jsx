@@ -270,7 +270,7 @@ export default function ReportsDashboard({
   const filteredBeneficiaries = useMemo(() => {
     const q = search.toLowerCase();
     return beneficiaries.filter((b) => {
-      const text = `${b.name || ''} ${b.id || ''} ${b.fatherName || ''} ${b.gp || ''} ${b.village || ''}`.toLowerCase();
+      const text = `${b.name || ''} ${b.id || ''} ${b.fatherName || ''} ${b.headName || ''} ${b.gp || ''} ${b.village || ''}`.toLowerCase();
       const matchesSearch = !q || text.includes(q);
       const matchesJanpad = !janpadFilter || b.block === janpadFilter;
       const matchesGp = !gpFilter || b.gp === gpFilter;

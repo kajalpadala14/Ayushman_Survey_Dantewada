@@ -89,6 +89,7 @@ export default function SupervisorDashboard({ beneficiaries, onUpdateStatus }) {
               Beneficiary Master Details (Read-only)
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.875rem' }}>
+              <div><strong>Mukhiya (मुखिया):</strong> {selectedSurvey.headName || '-'}</div>
               <div><strong>Father/Husband:</strong> {selectedSurvey.fatherName}</div>
               <div><strong>Age / Gender:</strong> {selectedSurvey.age} Yrs / {selectedSurvey.gender}</div>
               <div><strong>Mobile:</strong> {selectedSurvey.mobile}</div>
