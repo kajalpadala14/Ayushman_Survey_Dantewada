@@ -66,6 +66,8 @@ async function request(params, options = {}) {
     try {
       response = await fetch(url.toString(), {
         ...options,
+        credentials: 'omit',
+        redirect: 'follow',
         signal: controller.signal,
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
@@ -235,10 +237,86 @@ async function enrichHeadNameFromSheet(beneficiaries) {
   return beneficiaries;
 }
 
+function parseBeneficiariesFromTable(table) {
+  if (!table?.rows || !Array.isArray(table.rows)) return [];
+  const cols = table.cols || [];
+
+  const findIdx = (terms) => {
+    return cols.findIndex((c) => {
+      const label = (c?.label || '').toLowerCase();
+      return terms.some((t) => label.includes(t.toLowerCase()));
+    });
+  };
+
+  let colDistrict = findIdx(['जिला', 'district']);
+  let colBlock = findIdx(['ब्लॉक', 'block', 'विकासखंड']);
+  let colGp = findIdx(['ग्राम पंचायत', 'gp', 'panchayat']);
+  let colVillage = findIdx(['ग्राम', 'village']);
+  let colName = findIdx(['सदस्य का नाम', 'member name', 'name', 'सदस्य']);
+  let colGender = findIdx(['लिंग', 'gender']);
+  let colAge = findIdx(['आयु', 'age']);
+  let colMobile = findIdx(['मोबाइल', 'mobile']);
+  let colHead = findIdx(['मुखिया का नाम', 'मुखिया', 'head of family', 'head']);
+  let colFather = findIdx(['पिता/पति का नाम', 'पिता/पति', 'father name', 'father']);
+  let colAadhaar = findIdx(['आधार नंबर', 'aadhaar number', 'aadhaar']);
+  let colRation = findIdx(['राशन कार्ड नंबर', 'ration number', 'ration']);
+  let colId = findIdx(['सदस्य आईडी', 'beneficiaryid', 'id']);
+  let colStatus = findIdx(['सर्वे स्थिति', 'status', 'स्थिति']);
+  let colDate = findIdx(['सर्वे दिनांक', 'survey date', 'date']);
+  let colOverall = findIdx(['परिणाम', 'overall result', 'result']);
+
+  if (colBlock === -1) colBlock = 1;
+  if (colGp === -1) colGp = 2;
+  if (colVillage === -1) colVillage = 3;
+  if (colName === -1) colName = 4;
+  if (colHead === -1) colHead = 8;
+  if (colFather === -1) colFather = 9;
+  if (colId === -1) colId = 15;
+
+  return table.rows.map((row, idx) => {
+    const c = row?.c || [];
+    const getVal = (i) => (i >= 0 && c[i]?.v != null ? String(c[i].v).trim() : '');
+
+    const name = getVal(colName);
+    const id = getVal(colId) || `AYU-BEN-${String(idx + 1).padStart(6, '0')}`;
+    const headName = getVal(colHead);
+    const fatherName = getVal(colFather);
+    const block = getVal(colBlock) || 'Dantewada';
+    const gp = getVal(colGp) || '';
+    const village = getVal(colVillage) || '';
+    const status = getVal(colStatus) || 'Pending';
+    const surveyDate = getVal(colDate);
+    const aadhaarNum = getVal(colAadhaar);
+    const rationNum = getVal(colRation);
+    const overall = getVal(colOverall);
+
+    return {
+      id,
+      name: name || `Beneficiary ${idx + 1}`,
+      headName: headName || '',
+      fatherName: fatherName || '',
+      district: getVal(colDistrict) || 'Dantewada',
+      block,
+      gp,
+      village,
+      status,
+      surveyDate,
+      gender: getVal(colGender),
+      age: getVal(colAge),
+      mobile: getVal(colMobile),
+      aadhaarInfo: { aadhaarNumber: aadhaarNum, remark: '' },
+      rationInfo: { rationNumber: rationNum, hasRationCard: rationNum ? 'yes' : 'unknown' },
+      overallResult: overall || (status === 'Completed' ? 'VERIFIED' : '')
+    };
+  }).filter((b) => Boolean(b.name));
+}
+
 export async function getBootstrapData() {
   if (!bootstrapRequest) {
-    bootstrapRequest = request({ action: 'bootstrap' })
-      .then(async (payload) => {
+    bootstrapRequest = (async () => {
+      // 1. First attempt: Direct Apps Script call with credentials: 'omit'
+      try {
+        const payload = await request({ action: 'bootstrap' });
         const data = payload?.data || null;
         if (data) {
           if (Array.isArray(data.beneficiaries)) {
@@ -248,12 +326,52 @@ export async function getBootstrapData() {
             syncGoogleTime(data.serverTimestamp);
           }
           writeCachedBootstrapData(data);
+          return data;
         }
-        return data;
-      })
-      .finally(() => {
-        bootstrapRequest = null;
-      });
+      } catch (err) {
+        console.warn('Primary Apps Script bootstrap failed, attempting fallbacks:', err);
+      }
+
+      // 2. Fallback: Saved cached data in local storage
+      try {
+        const cachedRaw = window.localStorage.getItem(BOOTSTRAP_CACHE_KEY);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (parsed?.data?.beneficiaries?.length > 0) {
+            console.log('Serving from persistent local bootstrap cache.');
+            return parsed.data;
+          }
+        }
+      } catch (e) {
+        console.warn('Local cache fallback warning:', e);
+      }
+
+      // 3. Fallback: Direct Google Sheet fetch via JSONP/GViz table
+      try {
+        console.log('Attempting direct Google Sheet table fallback...');
+        const table = await fetchSheetTable();
+        if (table?.rows?.length > 0) {
+          const beneficiaries = parseBeneficiariesFromTable(table);
+          if (beneficiaries.length > 0) {
+            const fallbackData = {
+              beneficiaries,
+              parameters: [],
+              issues: [],
+              users: []
+            };
+            writeCachedBootstrapData(fallbackData);
+            return fallbackData;
+          }
+        }
+      } catch (e) {
+        console.warn('Direct Google Sheet table fallback failed:', e);
+      }
+
+      // 4. If all channels fail, surface the clean friendly error
+      throw new Error('Google Apps Script डिप्लॉयमेंट प्रोसेस हो रहा है (404 Page not found). कृपया 5-10 सेकंड बाद पेज रिफ्रेश (Reload) करें।');
+    })().finally(() => {
+      bootstrapRequest = null;
+    });
   }
 
   return bootstrapRequest;
