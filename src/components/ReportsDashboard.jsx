@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { appConfig } from '../config';
 import { formatSurveyDateTime, formatSurveyTime } from '../utils/dateTime';
+import { exportToExcel } from '../utils/excelExport';
 
 const REPORT_TABS = [
   { id: 'survey', label: 'सर्वे रिपोर्ट (Survey)' },
@@ -277,6 +278,7 @@ export default function ReportsDashboard({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
   const [blockReportModalOpen, setBlockReportModalOpen] = useState(false);
+  const [excelPreviewModalOpen, setExcelPreviewModalOpen] = useState(false);
 
   const distinctJanpads = useMemo(() => [...new Set(beneficiaries.map((b) => b.block).filter(Boolean))], [beneficiaries]);
   const distinctGps = useMemo(() => [...new Set(beneficiaries.filter((b) => !janpadFilter || b.block === janpadFilter).map((b) => b.gp).filter(Boolean))], [beneficiaries, janpadFilter]);
@@ -490,37 +492,21 @@ export default function ReportsDashboard({
     setPage(1);
   };
 
-  const exportCsv = (dataRows, fileName) => {
-    if (!dataRows || dataRows.length === 0) return;
-    const headers = Object.keys(dataRows[0] || {});
-    const csv = [headers, ...dataRows.map((row) => headers.map((header) => escapeCsv(row[header])))]
-      .map((row) => row.join(','))
-      .join('\n');
-
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   const handleDownloadBlockWiseExcel = () => {
     const headers = [
-      'BLOCK',
-      'TOTAL',
-      'PENDING',
-      'SURVEY DONE',
-      'AADHAAR ISSUE',
-      'RATION ISSUE',
-      'BOTH (AADHAAR + RATION)',
-      'DONO HAIN PAR AYUSHMAN NAHI BANA'
+      'क्र. (S.No.)',
+      'विकासखंड (BLOCK)',
+      'कुल हितग्राही (TOTAL)',
+      'लंबित (PENDING)',
+      'सर्वे पूर्ण (SURVEY DONE)',
+      'आधार समस्या (AADHAAR ISSUE)',
+      'राशन समस्या (RATION ISSUE)',
+      'दोनों उपलब्ध (BOTH AVAILABLE)',
+      'दोनों हैं पर आयुष्मान नहीं बना (NO AYUSHMAN)'
     ];
 
-    const dataRows = blockWiseRows.map((r) => [
+    const dataRows = blockWiseRows.map((r, idx) => [
+      idx + 1,
       r.block,
       r.total,
       r.pending,
@@ -532,7 +518,8 @@ export default function ReportsDashboard({
     ]);
 
     dataRows.push([
-      'TOTAL',
+      '',
+      'TOTAL (कुल योग)',
       blockWiseTotals.total,
       blockWiseTotals.pending,
       blockWiseTotals.surveyDone,
@@ -542,28 +529,41 @@ export default function ReportsDashboard({
       blockWiseTotals.bothNoAyushman
     ]);
 
-    const csvString = [headers, ...dataRows]
-      .map((row) => row.map(escapeCsv).join(','))
-      .join('\n');
-
-    const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Block_Wise_Report_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportToExcel(
+      [headers, ...dataRows],
+      `Block_Wise_Report_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      'Block_Wise_Summary'
+    );
   };
 
-  const handleExcelExport = () => {
+  const getExcelExportData = () => {
     if (activeTabKey === 'block-wise') {
-      handleDownloadBlockWiseExcel();
-      return;
+      const rows = blockWiseRows.map((r, idx) => ({
+        'क्र. (S.No.)': idx + 1,
+        'विकासखंड (Block)': r.block,
+        'कुल हितग्राही (Total)': r.total,
+        'लंबित (Pending)': r.pending,
+        'सर्वे पूर्ण (Survey Done)': r.surveyDone,
+        'आधार समस्या (Aadhaar Issue)': r.aadhaarIssue,
+        'राशन समस्या (Ration Issue)': r.rationIssue,
+        'दोनों उपलब्ध (Both Available)': r.bothAvailable,
+        'आयुष्मान नहीं बना (No Ayushman)': r.bothNoAyushman
+      }));
+      rows.push({
+        'क्र. (S.No.)': '',
+        'विकासखंड (Block)': 'कुल योग (TOTAL)',
+        'कुल हितग्राही (Total)': blockWiseTotals.total,
+        'लंबित (Pending)': blockWiseTotals.pending,
+        'सर्वे पूर्ण (Survey Done)': blockWiseTotals.surveyDone,
+        'आधार समस्या (Aadhaar Issue)': blockWiseTotals.aadhaarIssue,
+        'राशन समस्या (Ration Issue)': blockWiseTotals.rationIssue,
+        'दोनों उपलब्ध (Both Available)': blockWiseTotals.bothAvailable,
+        'आयुष्मान नहीं बना (No Ayushman)': blockWiseTotals.bothNoAyushman
+      });
+      return rows;
     }
 
-    const exportData = reportRows.map((r, idx) => ({
+    return reportRows.map((r, idx) => ({
       'क्र. (S.No.)': idx + 1,
       'हितग्राही ID (ID)': r.id,
       'हितग्राही का नाम (Beneficiary Name)': r.name,
@@ -577,8 +577,46 @@ export default function ReportsDashboard({
       'सर्वे स्थिति (Status)': r.status,
       'सर्वे दिनांक (Survey Date)': r.date
     }));
+  };
 
-    exportCsv(exportData, `${activeTabKey}-report-${new Date().toISOString().slice(0, 10)}.csv`);
+  const getExcelFileName = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const tabName = {
+      survey: 'Survey_Report',
+      'block-wise': 'Block_Wise_Report',
+      verified: 'Verified_Beneficiaries',
+      pending: 'Pending_Survey_List',
+      date: 'Date_Wise_Report'
+    }[activeTabKey] || 'Ayushman_Report';
+    return `${tabName}_${today}.xlsx`;
+  };
+
+  const getExcelSheetName = () => {
+    const sheetNameMap = {
+      survey: 'सर्वे_रिपोर्ट',
+      'block-wise': 'ब्लॉक_वार',
+      verified: 'सत्यापित_सूची',
+      pending: 'लंबित_सूची',
+      date: 'दिनांक_वार'
+    };
+    return sheetNameMap[activeTabKey] || 'Report';
+  };
+
+  const handleExcelExport = () => {
+    const data = getExcelExportData();
+    if (!data || data.length === 0) {
+      alert('एक्सपोर्ट के लिए कोई रिकॉर्ड उपलब्ध नहीं है। कृपया फ़िल्टर जांचें।');
+      return;
+    }
+    setExcelPreviewModalOpen(true);
+  };
+
+  const handleConfirmExcelDownload = () => {
+    const data = getExcelExportData();
+    const fileName = getExcelFileName();
+    const sheetName = getExcelSheetName();
+    exportToExcel(data, fileName, sheetName);
+    setExcelPreviewModalOpen(false);
   };
 
   const handlePdfExport = () => {
@@ -1264,6 +1302,118 @@ export default function ReportsDashboard({
                 onClick={handleDownloadBlockWiseExcel}
               >
                 <Download size={16} /> Final Download Excel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Export & Data Preview Modal */}
+      {excelPreviewModalOpen && (
+        <div className="excel-preview-modal-overlay" onClick={() => setExcelPreviewModalOpen(false)}>
+          <div className="excel-preview-modal-card" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="excel-preview-header">
+              <div className="excel-preview-header-left">
+                <div className="excel-preview-icon-box">
+                  <FileSpreadsheet size={24} />
+                </div>
+                <div>
+                  <h3 className="excel-preview-title">एक्सेल एक्सपोर्ट डेटा प्रीव्यू</h3>
+                  <p className="excel-preview-subtitle">
+                    फ़ाइल: <strong>{getExcelFileName()}</strong> • रिपोर्ट: {REPORT_TABS.find((t) => t.id === activeTabKey)?.label || activeTabKey}
+                  </p>
+                </div>
+              </div>
+              <div className="excel-preview-header-right">
+                <span className="excel-preview-count-badge">
+                  कुल {getExcelExportData().length.toLocaleString('en-IN')} रिकॉर्ड्स
+                </span>
+                <button
+                  type="button"
+                  className="block-report-close-btn"
+                  onClick={() => setExcelPreviewModalOpen(false)}
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Info and Filter Notice Banner */}
+            <div className="excel-preview-notice-banner">
+              <div className="excel-notice-text">
+                <Sparkles size={16} />
+                <span>
+                  यह डेटा सीधे <strong>Microsoft Excel (.xlsx)</strong> फॉर्मेट में डाउनलोड होगा। डाउनलोड करने से पहले नीचे डेटा प्रीव्यू जांचें:
+                </span>
+              </div>
+              {activeFiltersCount > 0 && (
+                <div className="excel-preview-filter-chips">
+                  {janpadFilter && <span className="preview-chip">ब्लॉक: {janpadFilter}</span>}
+                  {gpFilter && <span className="preview-chip">पंचायत: {gpFilter}</span>}
+                  {gramFilter && <span className="preview-chip">ग्राम: {gramFilter}</span>}
+                  {search && <span className="preview-chip">खोज: "{search}"</span>}
+                  {dateFrom && <span className="preview-chip">से: {dateFrom}</span>}
+                  {dateTo && <span className="preview-chip">तक: {dateTo}</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Preview Table */}
+            <div className="excel-preview-table-scroll">
+              {(() => {
+                const data = getExcelExportData();
+                const headers = data.length > 0 ? Object.keys(data[0]) : [];
+                const previewRows = data.slice(0, 15);
+
+                return (
+                  <table className="excel-preview-table">
+                    <thead>
+                      <tr>
+                        {headers.map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewRows.map((row, rIdx) => (
+                        <tr key={rIdx}>
+                          {headers.map((h, cIdx) => (
+                            <td key={cIdx} className={typeof row[h] === 'number' ? 'cell-number' : ''}>
+                              {row[h] !== undefined && row[h] !== null && row[h] !== '' ? String(row[h]) : '—'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            {/* Limit Note */}
+            {getExcelExportData().length > 15 && (
+              <div className="excel-preview-limit-note">
+                ℹ️ प्रदर्शित: पहले 15 रिकॉर्ड (कुल <strong>{getExcelExportData().length.toLocaleString('en-IN')}</strong> रिकॉर्ड्स में से)। <strong>"एक्सेल (.xlsx) डाउनलोड करें"</strong> दबाने पर सभी रिकॉर्ड्स एक्सेल फ़ाइल में डाउनलोड होंगे।
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="excel-preview-modal-footer">
+              <button
+                type="button"
+                className="report-simple-btn"
+                onClick={() => setExcelPreviewModalOpen(false)}
+              >
+                रद्द करें
+              </button>
+              <button
+                type="button"
+                className="excel-download-btn-green"
+                onClick={handleConfirmExcelDownload}
+              >
+                <Download size={16} /> एक्सेल (.xlsx) डाउनलोड करें
               </button>
             </div>
           </div>

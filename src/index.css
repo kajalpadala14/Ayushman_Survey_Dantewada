@@ -7572,4 +7572,312 @@ body.dark,
   background-size: 200% 100% !important;
 }
 
+/* ==========================================================================
+   EXCEL EXPORT PREVIEW MODAL STYLES
+   ========================================================================== */
+
+.excel-preview-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1.25rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.excel-preview-modal-card {
+  width: min(1200px, 96vw);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1.75rem;
+  overflow: hidden;
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.excel-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.excel-preview-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.excel-preview-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  flex-shrink: 0;
+}
+
+.excel-preview-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.excel-preview-subtitle {
+  font-size: 0.825rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0.15rem 0 0;
+}
+
+.excel-preview-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.excel-preview-count-badge {
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 0.825rem;
+  font-weight: 700;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #a7f3d0;
+  white-space: nowrap;
+}
+
+.excel-preview-notice-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.excel-notice-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #166534;
+  font-weight: 500;
+}
+
+.excel-preview-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.preview-chip {
+  background: #ffffff;
+  color: #15803d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #86efac;
+}
+
+.excel-preview-table-scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 52vh;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.excel-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+  min-width: 800px;
+}
+
+.excel-preview-table thead th {
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 2px solid #cbd5e1;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.excel-preview-table tbody td {
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  font-size: 0.835rem;
+  white-space: nowrap;
+}
+
+.excel-preview-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.excel-preview-table tbody tr:hover {
+  background: #f0fdf4;
+}
+
+.excel-preview-table td.cell-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.excel-preview-limit-note {
+  font-size: 0.8rem;
+  color: #64748b;
+  padding: 0.5rem 0.25rem 0;
+  flex-shrink: 0;
+}
+
+.excel-preview-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.excel-download-btn-green {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  padding: 0.65rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.excel-download-btn-green:hover {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.excel-download-btn-green:active {
+  transform: translateY(0);
+}
+
+/* Dark mode overrides for Excel Preview */
+[data-theme="dark"] .excel-preview-modal-card,
+.dark .excel-preview-modal-card {
+  background: #0f1c34 !important;
+  border-color: #1e335a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="dark"] .excel-preview-title,
+.dark .excel-preview-title {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .excel-preview-subtitle,
+.dark .excel-preview-subtitle,
+[data-theme="dark"] .excel-preview-limit-note,
+.dark .excel-preview-limit-note {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .excel-preview-count-badge,
+.dark .excel-preview-count-badge {
+  background: #064e3b !important;
+  color: #6ee7b7 !important;
+  border-color: #047857 !important;
+}
+
+[data-theme="dark"] .excel-preview-notice-banner,
+.dark .excel-preview-notice-banner {
+  background: #062b21 !important;
+  border-color: #047857 !important;
+}
+
+[data-theme="dark"] .excel-notice-text,
+.dark .excel-notice-text {
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .preview-chip,
+.dark .preview-chip {
+  background: #0f1c34 !important;
+  color: #6ee7b7 !important;
+  border-color: #047857 !important;
+}
+
+[data-theme="dark"] .excel-preview-table-scroll,
+.dark .excel-preview-table-scroll {
+  background: #0b1528 !important;
+  border-color: #1e335a !important;
+}
+
+[data-theme="dark"] .excel-preview-table thead th,
+.dark .excel-preview-table thead th {
+  background: #132240 !important;
+  color: #cbd5e1 !important;
+  border-bottom-color: #1e335a !important;
+}
+
+[data-theme="dark"] .excel-preview-table tbody td,
+.dark .excel-preview-table tbody td {
+  border-bottom-color: #172a4d !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .excel-preview-table tbody tr:nth-child(even),
+.dark .excel-preview-table tbody tr:nth-child(even) {
+  background: #0f1c34 !important;
+}
+
+[data-theme="dark"] .excel-preview-table tbody tr:hover,
+.dark .excel-preview-table tbody tr:hover {
+  background: #16382b !important;
+}
+
+[data-theme="dark"] .excel-preview-modal-footer,
+.dark .excel-preview-modal-footer {
+  border-top-color: #1e335a !important;
+}
+
+
 
