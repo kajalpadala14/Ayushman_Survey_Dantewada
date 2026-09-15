@@ -279,6 +279,8 @@ export default function ReportsDashboard({
   const [pageSize, setPageSize] = useState(8);
   const [blockReportModalOpen, setBlockReportModalOpen] = useState(false);
   const [excelPreviewModalOpen, setExcelPreviewModalOpen] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
+  const previewPageSize = 15;
 
   const distinctJanpads = useMemo(() => [...new Set(beneficiaries.map((b) => b.block).filter(Boolean))], [beneficiaries]);
   const distinctGps = useMemo(() => [...new Set(beneficiaries.filter((b) => !janpadFilter || b.block === janpadFilter).map((b) => b.gp).filter(Boolean))], [beneficiaries, janpadFilter]);
@@ -608,6 +610,7 @@ export default function ReportsDashboard({
       alert('एक्सपोर्ट के लिए कोई रिकॉर्ड उपलब्ध नहीं है। कृपया फ़िल्टर जांचें।');
       return;
     }
+    setPreviewPage(1);
     setExcelPreviewModalOpen(true);
   };
 
@@ -1345,27 +1348,68 @@ export default function ReportsDashboard({
               <div className="excel-notice-text">
                 <Sparkles size={16} />
                 <span>
-                  यह डेटा सीधे <strong>Microsoft Excel (.xlsx)</strong> फॉर्मेट में डाउनलोड होगा। डाउनलोड करने से पहले नीचे डेटा प्रीव्यू जांचें:
+                  यह डेटा आपके द्वारा चुने गए फ़िल्टर के आधार पर <strong>Microsoft Excel (.xlsx)</strong> फ़ॉर्मेट में डाउनलोड होगा। डाउनलोड करने से पहले नीचे डेटा का विवरण जांचें:
                 </span>
               </div>
-              {activeFiltersCount > 0 && (
-                <div className="excel-preview-filter-chips">
-                  {janpadFilter && <span className="preview-chip">ब्लॉक: {janpadFilter}</span>}
-                  {gpFilter && <span className="preview-chip">पंचायत: {gpFilter}</span>}
-                  {gramFilter && <span className="preview-chip">ग्राम: {gramFilter}</span>}
-                  {search && <span className="preview-chip">खोज: "{search}"</span>}
-                  {dateFrom && <span className="preview-chip">से: {dateFrom}</span>}
-                  {dateTo && <span className="preview-chip">तक: {dateTo}</span>}
-                </div>
-              )}
+              <div className="excel-preview-filter-chips">
+                <span className="preview-chip highlight">रिपोर्ट: {REPORT_TABS.find((t) => t.id === activeTabKey)?.label || activeTabKey}</span>
+                {janpadFilter ? <span className="preview-chip">ब्लॉक: {janpadFilter}</span> : <span className="preview-chip neutral">ब्लॉक: सभी</span>}
+                {gpFilter && <span className="preview-chip">ग्राम पंचायत: {gpFilter}</span>}
+                {gramFilter && <span className="preview-chip">ग्राम: {gramFilter}</span>}
+                {statusFilter && <span className="preview-chip">स्थिति: {statusFilter}</span>}
+                {issueTypeFilter && <span className="preview-chip">समस्या: {issueTypeFilter}</span>}
+                {search && <span className="preview-chip">खोज: "{search}"</span>}
+                {dateFrom && <span className="preview-chip">प्रारंभिक दिनांक: {dateFrom}</span>}
+                {dateTo && <span className="preview-chip">अंतिम दिनांक: {dateTo}</span>}
+              </div>
             </div>
+
+            {/* Preview Controls Bar */}
+            {(() => {
+              const data = getExcelExportData();
+              const totalPages = Math.max(1, Math.ceil(data.length / previewPageSize));
+              const startIdx = (previewPage - 1) * previewPageSize;
+              const endIdx = Math.min(startIdx + previewPageSize, data.length);
+
+              return (
+                <div className="excel-preview-controls-bar">
+                  <span className="excel-preview-showing-text">
+                    प्रदर्शित: <strong>{data.length > 0 ? startIdx + 1 : 0} - {endIdx}</strong> (कुल <strong>{data.length.toLocaleString('en-IN')}</strong> रिकॉर्ड्स में से)
+                  </span>
+                  {totalPages > 1 && (
+                    <div className="excel-preview-page-buttons">
+                      <button
+                        type="button"
+                        className="preview-nav-btn"
+                        disabled={previewPage <= 1}
+                        onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={14} /> पिछला
+                      </button>
+                      <span className="preview-page-num">
+                        पृष्ठ {previewPage} / {totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="preview-nav-btn"
+                        disabled={previewPage >= totalPages}
+                        onClick={() => setPreviewPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        अगला <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Preview Table */}
             <div className="excel-preview-table-scroll">
               {(() => {
                 const data = getExcelExportData();
                 const headers = data.length > 0 ? Object.keys(data[0]) : [];
-                const previewRows = data.slice(0, 15);
+                const startIdx = (previewPage - 1) * previewPageSize;
+                const pageRows = data.slice(startIdx, startIdx + previewPageSize);
 
                 return (
                   <table className="excel-preview-table">
@@ -1377,7 +1421,7 @@ export default function ReportsDashboard({
                       </tr>
                     </thead>
                     <tbody>
-                      {previewRows.map((row, rIdx) => (
+                      {pageRows.map((row, rIdx) => (
                         <tr key={rIdx}>
                           {headers.map((h, cIdx) => (
                             <td key={cIdx} className={typeof row[h] === 'number' ? 'cell-number' : ''}>
@@ -1393,11 +1437,9 @@ export default function ReportsDashboard({
             </div>
 
             {/* Limit Note */}
-            {getExcelExportData().length > 15 && (
-              <div className="excel-preview-limit-note">
-                ℹ️ प्रदर्शित: पहले 15 रिकॉर्ड (कुल <strong>{getExcelExportData().length.toLocaleString('en-IN')}</strong> रिकॉर्ड्स में से)। <strong>"एक्सेल (.xlsx) डाउनलोड करें"</strong> दबाने पर सभी रिकॉर्ड्स एक्सेल फ़ाइल में डाउनलोड होंगे।
-              </div>
-            )}
+            <div className="excel-preview-limit-note">
+              ℹ️ यह केवल प्रीव्यू स्क्रीन है। नीचे <strong>"एक्सेल (.xlsx) डाउनलोड करें"</strong> बटन दबाने पर सभी <strong>{getExcelExportData().length.toLocaleString('en-IN')}</strong> रिकॉर्ड्स पूरी तरह एक्सेल फ़ाइल में सुरक्षित डाउनलोड होंगे।
+            </div>
 
             {/* Modal Footer */}
             <div className="excel-preview-modal-footer">

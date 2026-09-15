@@ -7701,6 +7701,73 @@ body.dark,
   border: 1px solid #86efac;
 }
 
+.preview-chip.highlight {
+  background: #047857;
+  color: #ffffff;
+  border-color: #047857;
+  font-weight: 700;
+}
+
+.preview-chip.neutral {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
+
+.excel-preview-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.25rem;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.excel-preview-showing-text {
+  font-size: 0.825rem;
+  color: #475569;
+}
+
+.excel-preview-page-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.preview-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.785rem;
+  font-weight: 600;
+  color: #1e293b;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preview-nav-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.preview-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.preview-page-num {
+  font-size: 0.785rem;
+  font-weight: 700;
+  color: #047857;
+  padding: 0 0.35rem;
+}
+
 .excel-preview-table-scroll {
   overflow-x: auto;
   overflow-y: auto;
@@ -7878,6 +7945,32 @@ body.dark,
 .dark .excel-preview-modal-footer {
   border-top-color: #1e335a !important;
 }
+
+[data-theme="dark"] .preview-chip.neutral,
+.dark .preview-chip.neutral {
+  background: #0f1c34 !important;
+  color: #94a3b8 !important;
+  border-color: #1e335a !important;
+}
+
+[data-theme="dark"] .preview-nav-btn,
+.dark .preview-nav-btn {
+  background: #0b1528 !important;
+  color: #cbd5e1 !important;
+  border-color: #1e335a !important;
+}
+
+[data-theme="dark"] .preview-nav-btn:hover:not(:disabled),
+.dark .preview-nav-btn:hover:not(:disabled) {
+  background: #1e335a !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .excel-preview-showing-text,
+.dark .excel-preview-showing-text {
+  color: #94a3b8 !important;
+}
+
 
 
 
