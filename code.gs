@@ -222,6 +222,7 @@ function mapBeneficiaryRow(rawRow, index) {
     },
     address: '',
     maritalStatus: clean(getValue(row, ['वैवाहिक स्थिति', 'Marital Status', 'maritalStatus'])),
+    visitReason: clean(getValue(row, ['ऑफिस आने का कारण', 'Reason for Visit', 'visitReason', 'कारण', 'grievance'])),
     raw: {}
   };
 }
@@ -438,10 +439,13 @@ function doPost(e) {
         return jsonResponse({ ok: false, statusCode: 404, error: `Sheet '${BENEFICIARY_SHEET_NAME}' not found.` });
       }
 
-      // Ensure headers for Columns 17-20 on row 2 if missing
+      // Ensure headers for Columns 17-21 on row 2 if missing
       const lastCol = sheet.getLastColumn();
       if (lastCol < 20) {
         sheet.getRange(2, 17, 1, 4).setValues([['सर्वे स्थिति', 'सर्वे आईडी', 'सर्वे दिनांक', 'सर्वेक्षक']]);
+      }
+      if (sheet.getLastColumn() < 21 || !clean(sheet.getRange(2, 21).getValue())) {
+        sheet.getRange(2, 21).setValue('ऑफिस आने का कारण');
       }
 
       const targetRow = findBeneficiaryRow(sheet, beneficiaryId, payload.beneficiaryName);
@@ -462,6 +466,7 @@ function doPost(e) {
 
       const mobileInfo = payload.mobileInfo || {};
       const mobileNum = clean(mobileInfo.mobileNumber);
+      const visitReason = clean(payload.visitReason);
 
       const status = overallResult === 'VERIFIED' ? 'Completed' : 'Issue Found';
 
@@ -470,7 +475,7 @@ function doPost(e) {
       const serverSurveyDate = Utilities.formatDate(googleNow, 'Asia/Kolkata', 'yyyy-MM-dd HH:mm:ss');
       const finalSurveyDate = serverSurveyDate;
 
-      // Update Columns 11 (K) through 20 (T) in targetRow:
+      // Update Columns 11 (K) through 21 (U) in targetRow:
       const updatedRowData = [[
         aadhaarNum,         // Col 11 (K): आधार नंबर
         enrollmentNum,      // Col 12 (L): एनरोलमेंट नंबर
@@ -481,10 +486,11 @@ function doPost(e) {
         status,             // Col 17 (Q): सर्वे स्थिति
         surveyId,           // Col 18 (R): सर्वे आईडी
         finalSurveyDate,    // Col 19 (S): सर्वे दिनांक (Google Server IST Time)
-        clean(payload.submittedBy) // Col 20 (T): सर्वेक्षक
+        clean(payload.submittedBy), // Col 20 (T): सर्वेक्षक
+        visitReason         // Col 21 (U): ऑफिस आने का कारण
       ]];
 
-      sheet.getRange(targetRow, 11, 1, 10).setValues(updatedRowData);
+      sheet.getRange(targetRow, 11, 1, 11).setValues(updatedRowData);
       SpreadsheetApp.flush();
 
       return jsonResponse({

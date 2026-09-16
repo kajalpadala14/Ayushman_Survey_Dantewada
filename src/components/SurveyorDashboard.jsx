@@ -593,7 +593,14 @@ export default function SurveyorDashboard({
                           <strong>पिता/पति का नाम: {beneficiary.fatherName || '-'}</strong>
                         </div>
                       </td>
-                      <td data-label="सदस्य" className="member-name">{beneficiary.name}</td>
+                      <td data-label="सदस्य" className="member-name">
+                        {beneficiary.name}
+                        {beneficiary.visitReason && (
+                          <div style={{ fontSize: '0.75rem', color: '#0d8d76', fontWeight: '600', marginTop: '2px' }}>
+                            कारण: {beneficiary.visitReason}
+                          </div>
+                        )}
+                      </td>
                       <td data-label="Gender / Age">{hindiGender[beneficiary.gender] || beneficiary.gender} / {beneficiary.age} वर्ष</td>
                       <td data-label="Status">
                         <span className={`member-status ${beneficiary.status === 'Completed' ? 'filled' : ''}`}>

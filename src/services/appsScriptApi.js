@@ -264,6 +264,7 @@ function parseBeneficiariesFromTable(table) {
   let colStatus = findIdx(['सर्वे स्थिति', 'status', 'स्थिति']);
   let colDate = findIdx(['सर्वे दिनांक', 'survey date', 'date']);
   let colOverall = findIdx(['परिणाम', 'overall result', 'result']);
+  let colVisitReason = findIdx(['ऑफिस आने का कारण', 'reason for visit', 'visit reason', 'grievance', 'कारण']);
 
   if (colBlock === -1) colBlock = 1;
   if (colGp === -1) colGp = 2;
@@ -289,6 +290,7 @@ function parseBeneficiariesFromTable(table) {
     const aadhaarNum = getVal(colAadhaar);
     const rationNum = getVal(colRation);
     const overall = getVal(colOverall);
+    const visitReason = getVal(colVisitReason);
 
     return {
       id,
@@ -304,6 +306,7 @@ function parseBeneficiariesFromTable(table) {
       gender: getVal(colGender),
       age: getVal(colAge),
       mobile: getVal(colMobile),
+      visitReason,
       aadhaarInfo: { aadhaarNumber: aadhaarNum, remark: '' },
       rationInfo: { rationNumber: rationNum, hasRationCard: rationNum ? 'yes' : 'unknown' },
       overallResult: overall || (status === 'Completed' ? 'VERIFIED' : '')
