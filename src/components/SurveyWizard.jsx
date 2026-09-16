@@ -21,30 +21,6 @@ const aadhaarRemarkOptions = [
   'नया वोटर आईडी कार्ड उपलब्ध है परंतु एनरोलमेंट नहीं हुआ है।'
 ];
 
-const VISIT_REASON_OPTIONS = [
-  'Rajpatra Process Information',
-  'DOB Change',
-  'Duplicate Aadhaar',
-  'Gender Change',
-  'Biometric Mismatch',
-  'Aadhaar lost',
-  'New Aadhaar for orphan child (DCPO) Format',
-  'Already Generated EID',
-  'Cancelled Aadhaar under regulation 27',
-  'Deactivate Under Regulation 28',
-  'DECLARED DOB TO VERIEFIED',
-  'ALREADY GENEARTED AADHAR NUMBER',
-  'Address Update',
-  'Biometric Lock',
-  'Biometric Issue',
-  'Orphan Child Name Change',
-  'Multiple Aadhaar',
-  'Deceased Aadhaar',
-  'PVC Order',
-  'DOB Change Using Annexure',
-  'Other district case'
-];
-
 export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSubmitSurvey, onCancel }) {
   const [step, setStep] = useState(1);
   const [localSurveyId] = useState(() => `${appConfig.surveyIdPrefix}-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`);
@@ -81,8 +57,6 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
       mobileNumber: ''
     }
   );
-
-  const [visitReason, setVisitReason] = useState(beneficiary.visitReason || '');
 
   const [validationError, setValidationError] = useState('');
 
@@ -199,11 +173,6 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
       return false;
     }
 
-    if (!visitReason) {
-      setValidationError('कृपया ऑफिस आने का कारण (Reason for Visit/Grievance) चुनें।');
-      return false;
-    }
-
     setValidationError('');
     return true;
   };
@@ -266,7 +235,6 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
         aadhaarInfo,
         rationInfo,
         mobileInfo,
-        visitReason,
         overallResult
       });
       setSubmittedSurvey(result || null);
@@ -284,10 +252,9 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
   const hasIssue = false;
   const overallResultText = 'VERIFIED';
   const isAadhaarReady =
-    ((aadhaarInfo.type === 'aadhaar' && aadhaarInfo.aadhaarNumber.length === 12) ||
-      (aadhaarInfo.type === 'enrollment' && aadhaarInfo.enrollmentNumber.length === 28) ||
-      (aadhaarInfo.type === 'remark' && Boolean(aadhaarInfo.remark))) &&
-    Boolean(visitReason);
+    (aadhaarInfo.type === 'aadhaar' && aadhaarInfo.aadhaarNumber.length === 12) ||
+    (aadhaarInfo.type === 'enrollment' && aadhaarInfo.enrollmentNumber.length === 28) ||
+    (aadhaarInfo.type === 'remark' && Boolean(aadhaarInfo.remark));
   const isRationReady = rationInfo.hasRationCard === 'no' ||
     (rationInfo.hasRationCard === 'yes' && rationInfo.rationNumber.replace(/\D/g, '').length === 12);
   const isMobileReady = mobileInfo.mobileNumber.replace(/\D/g, '').length === 10;
@@ -522,52 +489,6 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
                 </div>
               </div>
             )}
-
-            <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--neutral-200)' }}>
-              <label 
-                htmlFor="visitReasonSelect" 
-                style={{ 
-                  display: 'block', 
-                  marginBottom: '0.5rem', 
-                  fontSize: '1rem', 
-                  fontWeight: '700', 
-                  color: 'var(--neutral-900)' 
-                }}
-              >
-                ऑफिस आने का कारण | Reason for Visit/Grievance <span style={{ color: 'var(--danger, #e11d48)' }}>*</span>
-              </label>
-              <select
-                id="visitReasonSelect"
-                value={visitReason}
-                onChange={(e) => {
-                  setVisitReason(e.target.value);
-                  setValidationError('');
-                }}
-                style={{
-                  width: '100%',
-                  padding: '0.85rem 1rem',
-                  fontSize: '1rem',
-                  borderRadius: '12px',
-                  border: visitReason ? '2px solid var(--primary, #0d8d76)' : '2px solid var(--neutral-300)',
-                  backgroundColor: 'var(--card-bg, #fff)',
-                  color: 'var(--neutral-900)',
-                  fontWeight: '500',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-                }}
-              >
-                <option value="">-- ऑफिस आने का कारण चुनें / Select Reason --</option>
-                {VISIT_REASON_OPTIONS.map((reason) => (
-                  <option key={reason} value={reason}>
-                    {reason}
-                  </option>
-                ))}
-              </select>
-              <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: 'var(--neutral-500)' }}>
-                <span>हितग्राही के आने का कारण चुनना अनिवार्य है।</span>
-              </div>
-            </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '1.5rem' }}>
               <button
@@ -908,13 +829,6 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
             <h4 style={{ fontSize: '0.95rem', color: 'var(--neutral-700)', marginBottom: '0.5rem' }}>मोबाइल नंबर की जानकारी</h4>
             <div style={{ fontSize: '0.9rem' }}>
               <span><strong>मोबाइल नंबर:</strong> {mobileInfo.mobileNumber}</span>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--neutral-50)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', border: '1px solid var(--neutral-200)' }}>
-            <h4 style={{ fontSize: '0.95rem', color: 'var(--neutral-700)', marginBottom: '0.5rem' }}>ऑफिस आने का कारण (Reason for Visit)</h4>
-            <div style={{ fontSize: '0.9rem' }}>
-              <span><strong>कारण:</strong> {visitReason || '—'}</span>
             </div>
           </div>
 

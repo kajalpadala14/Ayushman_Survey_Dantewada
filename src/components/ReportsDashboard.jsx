@@ -254,7 +254,6 @@ const buildTableRows = (beneficiariesList, activeTabKey) => {
     janpad: b.block || 'Unknown',
     gp: b.gp || 'Unknown',
     gram: b.village || 'Unknown',
-    visitReason: b.visitReason || '',
     status: b.status || 'Pending',
     date: b.surveyDate ? formatDate(b.surveyDate) : '-'
   }));
@@ -577,7 +576,6 @@ export default function ReportsDashboard({
       'ग्राम (Village)': r.gram,
       ...(r.aadhaarStatus ? { 'आधार स्थिति (Aadhaar)': r.aadhaarStatus } : {}),
       ...(r.verifiedStatus ? { 'सत्यापन स्थिति (Verification)': r.verifiedStatus } : {}),
-      ...(r.visitReason ? { 'ऑफिस आने का कारण (Visit Reason)': r.visitReason } : {}),
       'सर्वे स्थिति (Status)': r.status,
       'सर्वे दिनांक (Survey Date)': r.date
     }));

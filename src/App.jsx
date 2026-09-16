@@ -106,7 +106,6 @@ export default function App() {
     aadhaarInfo,
     rationInfo,
     mobileInfo,
-    visitReason,
     overallResult
   }) => {
     // 1. Fetch current time from Google Apps Script / calibrated time
@@ -122,7 +121,6 @@ export default function App() {
       aadhaarInfo,
       rationInfo,
       mobileInfo,
-      visitReason,
       overallResult,
       surveyId,
       surveyDate: initialSurveyDate,
@@ -142,7 +140,6 @@ export default function App() {
       aadhaarInfo,
       rationInfo,
       mobileInfo,
-      visitReason,
       parameterResponses: responses
     };
 
