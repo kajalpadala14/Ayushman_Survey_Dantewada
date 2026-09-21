@@ -625,6 +625,7 @@ export default function SurveyorDashboard({
               <table className="dashboard-table dashboard-location-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '45px' }}>#</th>
                     <th>Block</th>
                     <th className="text-right">Total Survey</th>
                     <th className="text-right">Completed</th>
@@ -634,6 +635,7 @@ export default function SurveyorDashboard({
                 <tbody>
                   {loading ? dashboardSkeletonRows.map((row) => (
                     <tr key={`block-skeleton-${row}`}>
+                      <td data-label="#"><SkeletonText width="20px" /></td>
                       <td data-label="Block"><SkeletonText width="120px" /></td>
                       <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
                       <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
@@ -641,8 +643,9 @@ export default function SurveyorDashboard({
                     </tr>
                   )) : (
                     <>
-                      {locationTableRows.map((row) => (
+                      {locationTableRows.map((row, index) => (
                         <tr key={row.block}>
+                          <td data-label="#" className="cell-num font-semibold">{index + 1}</td>
                           <td data-label="Block">{row.block}</td>
                           <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
                           <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
@@ -651,6 +654,7 @@ export default function SurveyorDashboard({
                       ))}
                       {locationTableRows.length > 0 && (
                         <tr className="dashboard-table-total-row">
+                          <td data-label="#">—</td>
                           <td data-label="Block" className="strong-cell">Total</td>
                           <td data-label="Total Survey" className="text-right strong-cell">{locationTotals.totalSurvey}</td>
                           <td data-label="Completed" className="text-right completed-cell">{locationTotals.completed}</td>
@@ -682,6 +686,7 @@ export default function SurveyorDashboard({
               <table className="dashboard-table dashboard-recent-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '45px' }}>#</th>
                     <th>Gram Panchayat</th>
                     <th>Block</th>
                     <th className="text-right">Total Survey</th>
@@ -692,6 +697,7 @@ export default function SurveyorDashboard({
                 <tbody>
                   {loading ? dashboardSkeletonRows.map((row) => (
                     <tr key={`gp-skeleton-${row}`}>
+                      <td data-label="#"><SkeletonText width="20px" /></td>
                       <td data-label="Gram Panchayat" className="dashboard-beneficiary-name"><SkeletonText width="150px" /></td>
                       <td data-label="Block"><SkeletonText width="110px" /></td>
                       <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
@@ -700,8 +706,9 @@ export default function SurveyorDashboard({
                     </tr>
                   )) : (
                     <>
-                      {gpTableRows.map((row) => (
+                      {gpTableRows.map((row, index) => (
                         <tr key={row.gp}>
+                          <td data-label="#" className="cell-num font-semibold">{index + 1}</td>
                           <td data-label="Gram Panchayat" className="dashboard-beneficiary-name">{row.gp}</td>
                           <td data-label="Block">{row.block}</td>
                           <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
@@ -711,6 +718,7 @@ export default function SurveyorDashboard({
                       ))}
                       {gpTableRows.length > 0 && (
                         <tr className="dashboard-table-total-row">
+                          <td data-label="#">—</td>
                           <td data-label="Gram Panchayat" className="dashboard-beneficiary-name strong-cell">Total</td>
                           <td data-label="Block">—</td>
                           <td data-label="Total Survey" className="text-right strong-cell">{gpTotals.totalSurvey}</td>
@@ -743,6 +751,7 @@ export default function SurveyorDashboard({
               <table className="dashboard-table dashboard-recent-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '45px' }}>#</th>
                     <th>Village</th>
                     <th>Gram Panchayat</th>
                     <th>Block</th>
@@ -754,6 +763,7 @@ export default function SurveyorDashboard({
                 <tbody>
                   {loading ? dashboardSkeletonRows.map((row) => (
                     <tr key={`village-skeleton-${row}`}>
+                      <td data-label="#"><SkeletonText width="20px" /></td>
                       <td data-label="Village" className="dashboard-beneficiary-name"><SkeletonText width="140px" /></td>
                       <td data-label="Gram Panchayat"><SkeletonText width="120px" /></td>
                       <td data-label="Block"><SkeletonText width="100px" /></td>
@@ -763,8 +773,9 @@ export default function SurveyorDashboard({
                     </tr>
                   )) : (
                     <>
-                      {villageTableRows.map((row) => (
+                      {villageTableRows.map((row, index) => (
                         <tr key={`${row.block}-${row.gp}-${row.village}`}>
+                          <td data-label="#" className="cell-num font-semibold">{index + 1}</td>
                           <td data-label="Village" className="dashboard-beneficiary-name">{row.village}</td>
                           <td data-label="Gram Panchayat">{row.gp}</td>
                           <td data-label="Block">{row.block}</td>
@@ -775,6 +786,7 @@ export default function SurveyorDashboard({
                       ))}
                       {villageTableRows.length > 0 && (
                         <tr className="dashboard-table-total-row">
+                          <td data-label="#">—</td>
                           <td data-label="Village" className="dashboard-beneficiary-name strong-cell">Total</td>
                           <td data-label="Gram Panchayat">—</td>
                           <td data-label="Block">—</td>

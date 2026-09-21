@@ -1195,6 +1195,7 @@ export default function ReportsDashboard({
             <table className="custom-table block-report-table">
               <thead>
                 <tr>
+                  <th style={{ width: '50px' }}>क्र.</th>
                   <th>BLOCK</th>
                   <th>TOTAL</th>
                   <th>PENDING</th>
@@ -1205,8 +1206,9 @@ export default function ReportsDashboard({
                 </tr>
               </thead>
               <tbody>
-                {blockWiseRows.map((row) => (
+                {blockWiseRows.map((row, idx) => (
                   <tr key={row.block}>
+                    <td className="cell-num font-semibold">{idx + 1}</td>
                     <td className="cell-block-title">{row.block}</td>
                     <td className="cell-num">{row.total.toLocaleString('en-IN')}</td>
                     <td className="cell-num">{row.pending.toLocaleString('en-IN')}</td>
@@ -1217,6 +1219,7 @@ export default function ReportsDashboard({
                   </tr>
                 ))}
                 <tr className="block-report-total-row">
+                  <td className="cell-num font-black">—</td>
                   <td className="cell-block-title font-black">TOTAL</td>
                   <td className="cell-num">{blockWiseTotals.total.toLocaleString('en-IN')}</td>
                   <td className="cell-num">{blockWiseTotals.pending.toLocaleString('en-IN')}</td>
@@ -1235,6 +1238,7 @@ export default function ReportsDashboard({
               <table className="custom-table block-report-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '50px' }}>क्र.</th>
                     <th>GRAM PANCHAYAT</th>
                     <th>BLOCK</th>
                     <th className="cell-num">TOTAL SURVEY</th>
@@ -1243,8 +1247,9 @@ export default function ReportsDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedRows.map((row) => (
+                  {paginatedRows.map((row, idx) => (
                     <tr key={`${row.block}-${row.gp}`}>
+                      <td className="cell-num font-semibold">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="cell-block-title font-bold">{row.gp}</td>
                       <td>{row.block}</td>
                       <td className="cell-num font-bold">{row.total.toLocaleString('en-IN')}</td>
@@ -1254,6 +1259,7 @@ export default function ReportsDashboard({
                   ))}
                   {gpWiseRows.length > 0 && (
                     <tr className="block-report-total-row">
+                      <td className="cell-num font-black">—</td>
                       <td className="cell-block-title font-black">TOTAL</td>
                       <td>—</td>
                       <td className="cell-num font-black">{gpWiseTotals.total.toLocaleString('en-IN')}</td>
@@ -1300,6 +1306,7 @@ export default function ReportsDashboard({
               <table className="custom-table block-report-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '50px' }}>क्र.</th>
                     <th>VILLAGE (ग्राम)</th>
                     <th>GRAM PANCHAYAT</th>
                     <th>BLOCK</th>
@@ -1309,8 +1316,9 @@ export default function ReportsDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedRows.map((row) => (
+                  {paginatedRows.map((row, idx) => (
                     <tr key={`${row.block}-${row.gp}-${row.village}`}>
+                      <td className="cell-num font-semibold">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="cell-block-title font-bold">{row.village}</td>
                       <td>{row.gp}</td>
                       <td>{row.block}</td>
@@ -1321,6 +1329,7 @@ export default function ReportsDashboard({
                   ))}
                   {villageWiseRows.length > 0 && (
                     <tr className="block-report-total-row">
+                      <td className="cell-num font-black">—</td>
                       <td className="cell-block-title font-black">TOTAL</td>
                       <td>—</td>
                       <td>—</td>
