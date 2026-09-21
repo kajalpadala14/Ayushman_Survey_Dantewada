@@ -176,10 +176,7 @@ export default function SurveyorDashboard({
     rationAvailableCount,
     rationAvailablePct,
     rationNotAvailableCount,
-    rationNotAvailablePct,
-    aadhaarPendingQuality,
-    rationPendingQuality,
-    mobileMissingQuality
+    rationNotAvailablePct
   } = docMetrics;
 
   const blockStats = getGroupStats(assignedList, 'block');
@@ -431,24 +428,7 @@ export default function SurveyorDashboard({
               </div>
             </div>
 
-            {/* Data Quality Strip */}
-            <div className="dashboard-doc-quality-strip">
-              <div className="dashboard-doc-quality-items">
-                <span className="dashboard-doc-quality-label">डेटा गुणवत्ता (Data Quality):</span>
-                <span className="dashboard-doc-quality-item">
-                  आधार स्थिति लंबित: <strong>{loading ? '0' : aadhaarPendingQuality}</strong>
-                </span>
-                <span className="dashboard-doc-quality-item">
-                  राशन स्थिति लंबित: <strong>{loading ? '0' : rationPendingQuality}</strong>
-                </span>
-                <span className="dashboard-doc-quality-item">
-                  मोबाइल नंबर अनुपलब्ध: <strong>{loading ? '0' : mobileMissingQuality}</strong>
-                </span>
-              </div>
-              <div className="dashboard-doc-quality-badge">
-                ✓ पूर्ण डेटा गुणवत्ता
-              </div>
-            </div>
+
           </section>
 
           <section className="dashboard-table-panel panel-card dashboard-location-panel">
