@@ -36,7 +36,6 @@ import {
 } from '../utils/reportsHelper.js';
 
 const REPORT_TABS = [
-  { id: 'survey', label: 'सर्वे रिपोर्ट (Survey)' },
   { id: 'block-wise', label: 'ब्लॉक-वार रिपोर्ट (Block-wise)' },
   { id: 'verified', label: 'सत्यापित हितग्राही (Verified)' },
   { id: 'pending', label: 'लंबित सर्वेक्षण (Pending)' },
@@ -71,7 +70,7 @@ export default function ReportsDashboard({
   users = [],
   loading = false
 }) {
-  const [activeTabKey, setActiveTabKey] = useState('survey');
+  const [activeTabKey, setActiveTabKey] = useState('block-wise');
   const [search, setSearch] = useState('');
   const [janpadFilter, setJanpadFilter] = useState('');
   const [gpFilter, setGpFilter] = useState('');
@@ -120,7 +119,7 @@ export default function ReportsDashboard({
     } else if (tabId === 'pending') {
       setStatusFilter('');
       setIssueTypeFilter('');
-    } else if (tabId === 'survey') {
+    } else if (tabId === 'block-wise') {
       setStatusFilter('');
       setIssueTypeFilter('');
     } else if (tabId === 'date') {
@@ -376,7 +375,6 @@ export default function ReportsDashboard({
   const getExcelFileName = () => {
     const today = new Date().toISOString().slice(0, 10);
     const tabName = {
-      survey: 'Survey_Report',
       'block-wise': 'Block_Wise_Report',
       verified: 'Verified_Beneficiaries',
       pending: 'Pending_Survey_List',
@@ -387,7 +385,6 @@ export default function ReportsDashboard({
 
   const getExcelSheetName = () => {
     const sheetNameMap = {
-      survey: 'सर्वे_रिपोर्ट',
       'block-wise': 'ब्लॉक_वार',
       verified: 'सत्यापित_सूची',
       pending: 'लंबित_सूची',
@@ -419,7 +416,6 @@ export default function ReportsDashboard({
   };
 
   const headersByTab = {
-    survey: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सर्वे स्थिति', 'सर्वे दिनांक'],
     verified: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सत्यापन स्थिति', 'सर्वे दिनांक'],
     pending: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे स्थिति'],
     date: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सर्वे दिनांक व समय', 'सर्वे स्थिति']
@@ -524,7 +520,7 @@ export default function ReportsDashboard({
     return row[header] ?? '—';
   };
 
-  const tableHeaders = headersByTab[activeTabKey] || headersByTab.survey;
+  const tableHeaders = headersByTab[activeTabKey] || headersByTab.verified;
   const totalBeneficiariesCount = beneficiaries.length;
   const completedCount = beneficiaries.filter((b) => b.status === 'Completed').length;
   const pendingCount = beneficiaries.filter((b) => b.status === 'Pending').length;
@@ -540,9 +536,9 @@ export default function ReportsDashboard({
       value: totalBeneficiariesCount,
       tone: 'blue',
       icon: Users,
-      isActive: activeTabKey === 'survey' && !statusFilter && !issueTypeFilter && !search && !janpadFilter,
+      isActive: activeTabKey === 'block-wise' && !statusFilter && !issueTypeFilter && !search && !janpadFilter,
       onClick: () => {
-        handleTabChange('survey');
+        handleTabChange('block-wise');
         resetFilters();
       }
     },
@@ -552,10 +548,10 @@ export default function ReportsDashboard({
       value: completedCount,
       tone: 'green',
       icon: CheckCircle2,
-      isActive: (activeTabKey === 'survey' || activeTabKey === 'date') && statusFilter === 'Completed',
+      isActive: activeTabKey === 'date' && statusFilter === 'Completed',
       onClick: () => {
-        if (activeTabKey !== 'survey' && activeTabKey !== 'date') {
-          setActiveTabKey('survey');
+        if (activeTabKey !== 'date') {
+          setActiveTabKey('date');
         }
         setStatusFilter((prev) => (prev === 'Completed' ? '' : 'Completed'));
         setIssueTypeFilter('');
@@ -571,7 +567,7 @@ export default function ReportsDashboard({
       isActive: activeTabKey === 'pending' || statusFilter === 'Pending',
       onClick: () => {
         if (activeTabKey === 'pending') {
-          handleTabChange('survey');
+          handleTabChange('block-wise');
         } else {
           handleTabChange('pending');
         }
@@ -585,8 +581,8 @@ export default function ReportsDashboard({
       icon: ShieldAlert,
       isActive: issueTypeFilter === 'Aadhaar Issue',
       onClick: () => {
-        if (activeTabKey !== 'survey') {
-          setActiveTabKey('survey');
+        if (activeTabKey === 'block-wise') {
+          setActiveTabKey('date');
         }
         setIssueTypeFilter((prev) => (prev === 'Aadhaar Issue' ? '' : 'Aadhaar Issue'));
         setStatusFilter('');
@@ -602,7 +598,7 @@ export default function ReportsDashboard({
       isActive: activeTabKey === 'verified',
       onClick: () => {
         if (activeTabKey === 'verified') {
-          handleTabChange('survey');
+          handleTabChange('block-wise');
         } else {
           handleTabChange('verified');
         }
@@ -856,8 +852,8 @@ export default function ReportsDashboard({
                 ))}
               </select>
 
-              {/* Status filter (available in survey and date tabs) */}
-              {(activeTabKey === 'survey' || activeTabKey === 'date') && (
+              {/* Status filter (available in date tab) */}
+              {activeTabKey === 'date' && (
                 <select
                   value={statusFilter}
                   onChange={(e) => {
