@@ -327,6 +327,84 @@ export default function SurveyorDashboard({
     );
   };
 
+  const villageRows = assignedList.reduce((acc, item) => {
+    const key = `${item.block || 'Unknown'}___${item.gp || 'Unknown'}___${item.village || 'Unknown'}`;
+    if (!acc[key]) {
+      acc[key] = {
+        village: item.village || 'Unknown',
+        gp: item.gp || 'Unknown',
+        block: item.block || 'Unknown',
+        totalSurvey: 0,
+        completed: 0,
+        pending: 0
+      };
+    }
+    acc[key].totalSurvey += 1;
+    if (item.status === 'Completed') {
+      acc[key].completed += 1;
+    } else {
+      acc[key].pending += 1;
+    }
+    return acc;
+  }, {});
+
+  const villageTableRows = Object.values(villageRows).sort((a, b) => {
+    return (b.totalSurvey + b.completed) - (a.totalSurvey + a.completed) || a.village.localeCompare(b.village);
+  });
+
+  const villageTotals = villageTableRows.reduce(
+    (acc, row) => ({
+      totalSurvey: acc.totalSurvey + row.totalSurvey,
+      completed: acc.completed + row.completed,
+      pending: acc.pending + row.pending
+    }),
+    { totalSurvey: 0, completed: 0, pending: 0 }
+  );
+
+  const handleDownloadVillageReport = () => {
+    if (!villageTableRows || villageTableRows.length === 0) {
+      alert('डाउनलोड करने के लिए कोई डेटा उपलब्ध नहीं है।');
+      return;
+    }
+
+    const headers = [
+      'क्र. (S.No.)',
+      'ग्राम (Village)',
+      'ग्राम पंचायत (Gram Panchayat)',
+      'विकासखंड (Block)',
+      'कुल सर्वे (Total Survey)',
+      'पूर्ण (Completed)',
+      'लंबित (Pending)'
+    ];
+
+    const dataRows = villageTableRows.map((r, idx) => [
+      idx + 1,
+      r.village,
+      r.gp,
+      r.block,
+      r.totalSurvey,
+      r.completed,
+      r.pending
+    ]);
+
+    dataRows.push([
+      '',
+      'कुल योग (Total)',
+      '—',
+      '—',
+      villageTotals.totalSurvey,
+      villageTotals.completed,
+      villageTotals.pending
+    ]);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel(
+      [headers, ...dataRows],
+      `Village_Wise_Report_${dateStr}.xlsx`,
+      'Village_Wise_Report'
+    );
+  };
+
   return (
     <div className="dashboard-shell">
       {showOverview && (
@@ -638,6 +716,71 @@ export default function SurveyorDashboard({
                           <td data-label="Total Survey" className="text-right strong-cell">{gpTotals.totalSurvey}</td>
                           <td data-label="Completed" className="text-right completed-cell">{gpTotals.completed}</td>
                           <td data-label="Pending" className="text-right pending-cell">{gpTotals.pending}</td>
+                        </tr>
+                      )}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="dashboard-table-panel panel-card dashboard-village-panel">
+            <div className="dashboard-recent-header">
+              <div className="dashboard-panel-title">Village-wise Report</div>
+              <button
+                type="button"
+                className="dashboard-download-btn"
+                onClick={handleDownloadVillageReport}
+                title="ग्राम-वार रिपोर्ट एक्सेल डाउनलोड करें"
+              >
+                <Download size={14} />
+                <span>Download Excel</span>
+              </button>
+            </div>
+
+            <div className="dashboard-table-wrap" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+              <table className="dashboard-table dashboard-recent-table">
+                <thead>
+                  <tr>
+                    <th>Village</th>
+                    <th>Gram Panchayat</th>
+                    <th>Block</th>
+                    <th className="text-right">Total Survey</th>
+                    <th className="text-right">Completed</th>
+                    <th className="text-right">Pending</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? dashboardSkeletonRows.map((row) => (
+                    <tr key={`village-skeleton-${row}`}>
+                      <td data-label="Village" className="dashboard-beneficiary-name"><SkeletonText width="140px" /></td>
+                      <td data-label="Gram Panchayat"><SkeletonText width="120px" /></td>
+                      <td data-label="Block"><SkeletonText width="100px" /></td>
+                      <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
+                      <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
+                    </tr>
+                  )) : (
+                    <>
+                      {villageTableRows.map((row) => (
+                        <tr key={`${row.block}-${row.gp}-${row.village}`}>
+                          <td data-label="Village" className="dashboard-beneficiary-name">{row.village}</td>
+                          <td data-label="Gram Panchayat">{row.gp}</td>
+                          <td data-label="Block">{row.block}</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
+                        </tr>
+                      ))}
+                      {villageTableRows.length > 0 && (
+                        <tr className="dashboard-table-total-row">
+                          <td data-label="Village" className="dashboard-beneficiary-name strong-cell">Total</td>
+                          <td data-label="Gram Panchayat">—</td>
+                          <td data-label="Block">—</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{villageTotals.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{villageTotals.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{villageTotals.pending}</td>
                         </tr>
                       )}
                     </>

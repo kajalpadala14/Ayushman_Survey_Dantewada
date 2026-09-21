@@ -38,6 +38,7 @@ import {
 const REPORT_TABS = [
   { id: 'block-wise', label: 'ब्लॉक-वार रिपोर्ट (Block-wise)' },
   { id: 'gp-wise', label: 'ग्राम पंचायत-वार रिपोर्ट (GP-wise)' },
+  { id: 'village-wise', label: 'ग्राम-वार रिपोर्ट (Village-wise)' },
   { id: 'verified', label: 'सत्यापित हितग्राही (Verified)' },
   { id: 'pending', label: 'लंबित सर्वेक्षण (Pending)' },
   { id: 'date', label: 'दिनांक-वार रिपोर्ट (Date-wise)' }
@@ -302,6 +303,48 @@ export default function ReportsDashboard({
     );
   }, [gpWiseRows]);
 
+  // Aggregate Village-Wise Statistics
+  const villageWiseRows = useMemo(() => {
+    const villageMap = new Map();
+    filteredBeneficiaries.forEach((b) => {
+      const villageName = b.village || 'Unknown';
+      const gpName = b.gp || 'Unknown';
+      const blockName = formatBlockName(b.block || 'Unknown');
+      const key = `${blockName}___${gpName}___${villageName}`;
+      if (!villageMap.has(key)) {
+        villageMap.set(key, {
+          village: villageName,
+          gp: gpName,
+          block: blockName,
+          total: 0,
+          completed: 0,
+          pending: 0
+        });
+      }
+      const item = villageMap.get(key);
+      item.total += 1;
+      if (b.status === 'Completed') {
+        item.completed += 1;
+      } else {
+        item.pending += 1;
+      }
+    });
+
+    const rows = Array.from(villageMap.values());
+    return rows.sort((a, b) => (b.total + b.completed) - (a.total + a.completed) || a.village.localeCompare(b.village));
+  }, [filteredBeneficiaries]);
+
+  const villageWiseTotals = useMemo(() => {
+    return villageWiseRows.reduce(
+      (acc, r) => ({
+        total: acc.total + r.total,
+        completed: acc.completed + r.completed,
+        pending: acc.pending + r.pending
+      }),
+      { total: 0, completed: 0, pending: 0 }
+    );
+  }, [villageWiseRows]);
+
   const reportRows = useMemo(() => {
     if (activeTabKey === 'block-wise') {
       return blockWiseRows;
@@ -309,16 +352,21 @@ export default function ReportsDashboard({
     if (activeTabKey === 'gp-wise') {
       return gpWiseRows;
     }
+    if (activeTabKey === 'village-wise') {
+      return villageWiseRows;
+    }
     return buildTableRows(filteredBeneficiaries, activeTabKey);
-  }, [filteredBeneficiaries, activeTabKey, blockWiseRows, gpWiseRows]);
+  }, [filteredBeneficiaries, activeTabKey, blockWiseRows, gpWiseRows, villageWiseRows]);
 
   const totalPages = Math.max(1, Math.ceil(
-    (activeTabKey === 'gp-wise' ? gpWiseRows.length : reportRows.length) / pageSize
+    (activeTabKey === 'gp-wise' ? gpWiseRows.length : activeTabKey === 'village-wise' ? villageWiseRows.length : reportRows.length) / pageSize
   ));
   const paginatedRows = activeTabKey === 'block-wise'
     ? blockWiseRows
     : activeTabKey === 'gp-wise'
     ? gpWiseRows.slice((page - 1) * pageSize, page * pageSize)
+    : activeTabKey === 'village-wise'
+    ? villageWiseRows.slice((page - 1) * pageSize, page * pageSize)
     : reportRows.slice((page - 1) * pageSize, page * pageSize);
 
   const activeFiltersCount = useMemo(() => {
@@ -422,6 +470,44 @@ export default function ReportsDashboard({
     );
   };
 
+  const handleDownloadVillageWiseExcel = () => {
+    const headers = [
+      'क्र. (S.No.)',
+      'ग्राम (Village)',
+      'ग्राम पंचायत (Gram Panchayat)',
+      'विकासखंड (Block)',
+      'कुल सर्वे (Total Survey)',
+      'पूर्ण (Completed)',
+      'लंबित (Pending)'
+    ];
+
+    const dataRows = villageWiseRows.map((r, idx) => [
+      idx + 1,
+      r.village,
+      r.gp,
+      r.block,
+      r.total,
+      r.completed,
+      r.pending
+    ]);
+
+    dataRows.push([
+      '',
+      'TOTAL (कुल योग)',
+      '—',
+      '—',
+      villageWiseTotals.total,
+      villageWiseTotals.completed,
+      villageWiseTotals.pending
+    ]);
+
+    exportToExcel(
+      [headers, ...dataRows],
+      `Village_Wise_Report_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      'Village_Wise_Summary'
+    );
+  };
+
   const getExcelExportData = () => {
     if (activeTabKey === 'block-wise') {
       const rows = blockWiseRows.map((r, idx) => ({
@@ -467,6 +553,28 @@ export default function ReportsDashboard({
       return rows;
     }
 
+    if (activeTabKey === 'village-wise') {
+      const rows = villageWiseRows.map((r, idx) => ({
+        'क्र. (S.No.)': idx + 1,
+        'ग्राम (Village)': r.village,
+        'ग्राम पंचायत (Gram Panchayat)': r.gp,
+        'विकासखंड (Block)': r.block,
+        'कुल सर्वे (Total Survey)': r.total,
+        'पूर्ण (Completed)': r.completed,
+        'लंबित (Pending)': r.pending
+      }));
+      rows.push({
+        'क्र. (S.No.)': '',
+        'ग्राम (Village)': 'कुल योग (TOTAL)',
+        'ग्राम पंचायत (Gram Panchayat)': '—',
+        'विकासखंड (Block)': '—',
+        'कुल सर्वे (Total Survey)': villageWiseTotals.total,
+        'पूर्ण (Completed)': villageWiseTotals.completed,
+        'लंबित (Pending)': villageWiseTotals.pending
+      });
+      return rows;
+    }
+
     return buildExcelExportRows(reportRows);
   };
 
@@ -475,6 +583,7 @@ export default function ReportsDashboard({
     const tabName = {
       'block-wise': 'Block_Wise_Report',
       'gp-wise': 'Gram_Panchayat_Wise_Report',
+      'village-wise': 'Village_Wise_Report',
       verified: 'Verified_Beneficiaries',
       pending: 'Pending_Survey_List',
       date: 'Date_Wise_Report'
@@ -486,6 +595,7 @@ export default function ReportsDashboard({
     const sheetNameMap = {
       'block-wise': 'ब्लॉक_वार',
       'gp-wise': 'ग्राम_पंचायत_वार',
+      'village-wise': 'ग्राम_वार',
       verified: 'सत्यापित_सूची',
       pending: 'लंबित_सूची',
       date: 'दिनांक_वार'
@@ -996,6 +1106,8 @@ export default function ReportsDashboard({
               ? `${blockWiseRows.length} विकासखंड • कुल ${blockWiseTotals.total.toLocaleString('en-IN')} हितग्राही`
               : activeTabKey === 'gp-wise'
               ? `${gpWiseRows.length} ग्राम पंचायत • कुल ${gpWiseTotals.total.toLocaleString('en-IN')} सर्वे`
+              : activeTabKey === 'village-wise'
+              ? `${villageWiseRows.length} ग्राम • कुल ${villageWiseTotals.total.toLocaleString('en-IN')} सर्वे`
               : `कुल ${reportRows.length.toLocaleString('en-IN')} रिकॉर्ड`}
           </span>
 
@@ -1028,6 +1140,31 @@ export default function ReportsDashboard({
                 type="button"
                 className="report-simple-btn primary small"
                 onClick={handleDownloadGpWiseExcel}
+              >
+                <Download size={14} /> Download Excel
+              </button>
+            </div>
+          ) : activeTabKey === 'village-wise' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="table-page-size-wrap">
+                <span>प्रति पृष्ठ:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                >
+                  <option value={8}>8</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                className="report-simple-btn primary small"
+                onClick={handleDownloadVillageWiseExcel}
               >
                 <Download size={14} /> Download Excel
               </button>
@@ -1132,6 +1269,74 @@ export default function ReportsDashboard({
               <div className="report-simple-pagination">
                 <div className="pagination-text">
                   प्रदर्शित <strong>{(page - 1) * pageSize + 1} - {Math.min(page * pageSize, gpWiseRows.length)}</strong> / कुल <strong>{gpWiseRows.length.toLocaleString('en-IN')}</strong>
+                </div>
+
+                <div className="pagination-buttons">
+                  <button
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    <ChevronLeft size={16} /> पिछला
+                  </button>
+                  <span className="page-current">
+                    पृष्ठ {page} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    अगला <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : activeTabKey === 'village-wise' ? (
+          /* Detailed Village-Wise Report Table */
+          <>
+            <div className="table-container">
+              <table className="custom-table block-report-table">
+                <thead>
+                  <tr>
+                    <th>VILLAGE (ग्राम)</th>
+                    <th>GRAM PANCHAYAT</th>
+                    <th>BLOCK</th>
+                    <th className="cell-num">TOTAL SURVEY</th>
+                    <th className="cell-num">COMPLETED</th>
+                    <th className="cell-num">PENDING</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedRows.map((row) => (
+                    <tr key={`${row.block}-${row.gp}-${row.village}`}>
+                      <td className="cell-block-title font-bold">{row.village}</td>
+                      <td>{row.gp}</td>
+                      <td>{row.block}</td>
+                      <td className="cell-num font-bold">{row.total.toLocaleString('en-IN')}</td>
+                      <td className="cell-num font-bold" style={{ color: '#16a34a' }}>{row.completed.toLocaleString('en-IN')}</td>
+                      <td className="cell-num font-bold" style={{ color: '#ea580c' }}>{row.pending.toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                  {villageWiseRows.length > 0 && (
+                    <tr className="block-report-total-row">
+                      <td className="cell-block-title font-black">TOTAL</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td className="cell-num font-black">{villageWiseTotals.total.toLocaleString('en-IN')}</td>
+                      <td className="cell-num font-black" style={{ color: '#16a34a' }}>{villageWiseTotals.completed.toLocaleString('en-IN')}</td>
+                      <td className="cell-num font-black" style={{ color: '#ea580c' }}>{villageWiseTotals.pending.toLocaleString('en-IN')}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {villageWiseRows.length > pageSize && (
+              <div className="report-simple-pagination">
+                <div className="pagination-text">
+                  प्रदर्शित <strong>{(page - 1) * pageSize + 1} - {Math.min(page * pageSize, villageWiseRows.length)}</strong> / कुल <strong>{villageWiseRows.length.toLocaleString('en-IN')}</strong>
                 </div>
 
                 <div className="pagination-buttons">
