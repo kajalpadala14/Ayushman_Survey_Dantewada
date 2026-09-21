@@ -307,8 +307,7 @@ export default function ReportsDashboard({
       'सर्वे पूर्ण (SURVEY DONE)',
       'आधार समस्या (AADHAAR ISSUE)',
       'राशन समस्या (RATION ISSUE)',
-      'दोनों उपलब्ध (BOTH AVAILABLE)',
-      'दोनों हैं पर आयुष्मान नहीं बना (NO AYUSHMAN)'
+      'दोनों उपलब्ध (BOTH AVAILABLE)'
     ];
 
     const dataRows = blockWiseRows.map((r, idx) => [
@@ -319,8 +318,7 @@ export default function ReportsDashboard({
       r.surveyDone,
       r.aadhaarIssue,
       r.rationIssue,
-      r.bothAvailable,
-      r.bothNoAyushman
+      r.bothAvailable
     ]);
 
     dataRows.push([
@@ -331,8 +329,7 @@ export default function ReportsDashboard({
       blockWiseTotals.surveyDone,
       blockWiseTotals.aadhaarIssue,
       blockWiseTotals.rationIssue,
-      blockWiseTotals.bothAvailable,
-      blockWiseTotals.bothNoAyushman
+      blockWiseTotals.bothAvailable
     ]);
 
     exportToExcel(
@@ -352,8 +349,7 @@ export default function ReportsDashboard({
         'सर्वे पूर्ण (Survey Done)': r.surveyDone,
         'आधार समस्या (Aadhaar Issue)': r.aadhaarIssue,
         'राशन समस्या (Ration Issue)': r.rationIssue,
-        'दोनों उपलब्ध (Both Available)': r.bothAvailable,
-        'आयुष्मान नहीं बना (No Ayushman)': r.bothNoAyushman
+        'दोनों उपलब्ध (Both Available)': r.bothAvailable
       }));
       rows.push({
         'क्र. (S.No.)': '',
@@ -363,8 +359,7 @@ export default function ReportsDashboard({
         'सर्वे पूर्ण (Survey Done)': blockWiseTotals.surveyDone,
         'आधार समस्या (Aadhaar Issue)': blockWiseTotals.aadhaarIssue,
         'राशन समस्या (Ration Issue)': blockWiseTotals.rationIssue,
-        'दोनों उपलब्ध (Both Available)': blockWiseTotals.bothAvailable,
-        'आयुष्मान नहीं बना (No Ayushman)': blockWiseTotals.bothNoAyushman
+        'दोनों उपलब्ध (Both Available)': blockWiseTotals.bothAvailable
       });
       return rows;
     }
@@ -938,7 +933,6 @@ export default function ReportsDashboard({
                   <th>AADHAAR ISSUE</th>
                   <th>RATION ISSUE</th>
                   <th>BOTH AVAILABLE</th>
-                  <th className="th-highlight">DONO HAIN PAR AYUSHMAN NAHI BANA</th>
                 </tr>
               </thead>
               <tbody>
@@ -951,7 +945,6 @@ export default function ReportsDashboard({
                     <td className="cell-num">{row.aadhaarIssue.toLocaleString('en-IN')}</td>
                     <td className="cell-num">{row.rationIssue.toLocaleString('en-IN')}</td>
                     <td className="cell-num">{row.bothAvailable.toLocaleString('en-IN')}</td>
-                    <td className="cell-num cell-highlight">{row.bothNoAyushman.toLocaleString('en-IN')}</td>
                   </tr>
                 ))}
                 <tr className="block-report-total-row">
@@ -962,7 +955,6 @@ export default function ReportsDashboard({
                   <td className="cell-num">{blockWiseTotals.aadhaarIssue.toLocaleString('en-IN')}</td>
                   <td className="cell-num">{blockWiseTotals.rationIssue.toLocaleString('en-IN')}</td>
                   <td className="cell-num">{blockWiseTotals.bothAvailable.toLocaleString('en-IN')}</td>
-                  <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
@@ -1091,7 +1083,6 @@ export default function ReportsDashboard({
                     <th>AADHAAR ISSUE</th>
                     <th>RATION ISSUE</th>
                     <th>BOTH AVAILABLE</th>
-                    <th className="th-highlight">DONO HAIN PAR AYUSHMAN NAHI BANA</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1104,7 +1095,6 @@ export default function ReportsDashboard({
                       <td className="cell-num">{row.aadhaarIssue.toLocaleString('en-IN')}</td>
                       <td className="cell-num">{row.rationIssue.toLocaleString('en-IN')}</td>
                       <td className="cell-num">{row.bothAvailable.toLocaleString('en-IN')}</td>
-                      <td className="cell-num cell-highlight">{row.bothNoAyushman.toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                   <tr className="block-report-total-row">
@@ -1115,7 +1105,6 @@ export default function ReportsDashboard({
                     <td className="cell-num">{blockWiseTotals.aadhaarIssue.toLocaleString('en-IN')}</td>
                     <td className="cell-num">{blockWiseTotals.rationIssue.toLocaleString('en-IN')}</td>
                     <td className="cell-num">{blockWiseTotals.bothAvailable.toLocaleString('en-IN')}</td>
-                    <td className="cell-num cell-highlight">{blockWiseTotals.bothNoAyushman.toLocaleString('en-IN')}</td>
                   </tr>
                 </tbody>
               </table>
