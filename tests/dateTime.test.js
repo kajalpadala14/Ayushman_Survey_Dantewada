@@ -27,6 +27,7 @@ test('formatSurveyTime formats timestamps into 12-hour AM/PM format', () => {
   assert.equal(formatSurveyTime('-'), '-');
   assert.equal(formatSurveyTime(''), '-');
   assert.equal(formatSurveyTime(null), '-');
+  assert.equal(formatSurveyTime(undefined), '-');
 
   // Format with HH:mm string
   const formatted = formatSurveyTime('2026-09-19 14:30:00');

@@ -7984,6 +7984,385 @@ body.dark,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ==========================================================================
+   Dashboard Executive Overview & Documentation Status (दस्तावेज़ स्थिति)
+   ========================================================================== */
+
+.dashboard-overview-subtitle {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--neutral-600, #475569);
+  margin-top: 0.2rem;
+}
+
+/* Top 4 KPI Cards */
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpi-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.kpi-icon-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #1e40af;
+}
+
+.kpi-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-label-hi {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--neutral-800, #1e293b);
+  line-height: 1.2;
+}
+
+.kpi-label-en {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--neutral-500, #64748b);
+  line-height: 1.2;
+  margin-bottom: 0.35rem;
+}
+
+.kpi-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--neutral-900, #0f172a);
+  line-height: 1.1;
+  margin-bottom: 0.25rem;
+}
+
+.kpi-footer {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--neutral-500, #64748b);
+}
+
+/* Overall Progress Card */
+.dashboard-progress-bar-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.dashboard-progress-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.dashboard-progress-bar-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--neutral-800, #1e293b);
+}
+
+.dashboard-progress-bar-pct {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.dashboard-progress-track {
+  height: 8px;
+  background: var(--neutral-200, #e2e8f0);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.dashboard-progress-track .dashboard-progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* Documentation Status Section (दस्तावेज़ स्थिति) */
+.dashboard-doc-status-panel {
+  margin-bottom: 1.5rem;
+}
+
+.dashboard-doc-status-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.dashboard-doc-status-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--neutral-900, #0f172a);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.dashboard-doc-status-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--neutral-500, #64748b);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.dashboard-doc-status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-doc-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-doc-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-doc-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doc-status-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-left: 3.5px solid #1e3a8a;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.doc-status-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.doc-status-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-status-title-hi {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--neutral-800, #1e293b);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-status-title-en {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--neutral-500, #64748b);
+  line-height: 1.2;
+  margin-bottom: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-status-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.2rem;
+}
+
+.doc-status-footer {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--neutral-500, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Data Quality Strip */
+.dashboard-doc-quality-strip {
+  margin-top: 0.75rem;
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.dashboard-doc-quality-items {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  color: var(--neutral-600, #475569);
+}
+
+.dashboard-doc-quality-label {
+  font-weight: 700;
+  color: var(--neutral-900, #0f172a);
+}
+
+.dashboard-doc-quality-item {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.dashboard-doc-quality-item strong {
+  color: var(--neutral-900, #0f172a);
+  font-weight: 700;
+}
+
+.dashboard-doc-quality-badge {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Dark mode overrides for executive & documentation status */
+[data-theme="dark"] .dashboard-overview-card,
+.dark .dashboard-overview-card,
+[data-theme="dark"] .kpi-card,
+.dark .kpi-card,
+[data-theme="dark"] .dashboard-progress-bar-card,
+.dark .dashboard-progress-bar-card,
+[data-theme="dark"] .doc-status-card,
+.dark .doc-status-card {
+  background: #132240 !important;
+  border-color: #1e335a !important;
+}
+
+[data-theme="dark"] .doc-status-card,
+.dark .doc-status-card {
+  border-left-color: #3b82f6 !important;
+}
+
+[data-theme="dark"] .kpi-icon-box,
+.dark .kpi-icon-box {
+  background: #0f1c34 !important;
+  border-color: #1e335a !important;
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] .doc-status-icon-box,
+.dark .doc-status-icon-box {
+  background: rgba(37, 99, 235, 0.2) !important;
+}
+
+[data-theme="dark"] .dashboard-progress-track,
+.dark .dashboard-progress-track {
+  background: #1e335a !important;
+}
+
+[data-theme="dark"] .dashboard-doc-quality-strip,
+.dark .dashboard-doc-quality-strip {
+  background: #0f1c34 !important;
+  border-color: #1e335a !important;
+}
+
+[data-theme="dark"] .dashboard-doc-quality-items,
+.dark .dashboard-doc-quality-items {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .dashboard-doc-quality-label,
+.dark .dashboard-doc-quality-label,
+[data-theme="dark"] .dashboard-doc-quality-item strong,
+.dark .dashboard-doc-quality-item strong,
+[data-theme="dark"] .dashboard-doc-status-title,
+.dark .dashboard-doc-status-title,
+[data-theme="dark"] .doc-status-title-hi,
+.dark .doc-status-title-hi,
+[data-theme="dark"] .kpi-label-hi,
+.dark .kpi-label-hi,
+[data-theme="dark"] .kpi-value,
+.dark .kpi-value,
+[data-theme="dark"] .dashboard-progress-bar-label,
+.dark .dashboard-progress-bar-label {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dashboard-doc-status-kicker,
+.dark .dashboard-doc-status-kicker,
+[data-theme="dark"] .doc-status-title-en,
+.dark .doc-status-title-en,
+[data-theme="dark"] .doc-status-footer,
+.dark .doc-status-footer,
+[data-theme="dark"] .kpi-label-en,
+.dark .kpi-label-en,
+[data-theme="dark"] .kpi-footer,
+.dark .kpi-footer,
+[data-theme="dark"] .dashboard-overview-subtitle,
+.dark .dashboard-overview-subtitle {
+  color: #94a3b8 !important;
+}
 
 .survey-table-badge.aadhaar {
   background: #ecfdf5;

@@ -1,15 +1,19 @@
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  CheckCircle,
+  CheckCircle2,
   Clock,
-  Home,
+  FileText,
+  FileX,
+  HelpCircle,
   Phone,
   Search,
-  ShieldCheck,
+  Shield,
+  TrendingUp,
   Users
 } from 'lucide-react';
 import { formatSurveyTime } from '../utils/dateTime';
+import { calculateDocumentationStatus } from '../utils/dashboardMetrics';
 
 const hindiGender = {
   Male: 'पुरुष',
@@ -123,7 +127,6 @@ export default function SurveyorDashboard({
   const [villageFilter, setVillageFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
-  const [summaryFocus, setSummaryFocus] = useState('all');
 
   const currentUserId = String(currentUser?.id || '').trim();
   const assignedList = useMemo(() => {
@@ -159,50 +162,26 @@ export default function SurveyorDashboard({
   const totalAssigned = assignedList.length;
   const completed = assignedList.filter((b) => b.status === 'Completed').length;
   const pending = assignedList.filter((b) => b.status === 'Pending').length;
-  const aadhaarIssueCount = assignedList.filter((b) => {
-    const responses = b.parameterResponses || {};
-    const issueText = Object.values(responses)
-      .map((response) => response?.issueType || '')
-      .join(' ')
-      .toLowerCase();
+  const completionRate = totalAssigned ? (completed / totalAssigned) * 100 : 0;
 
-    return /aadhaar|आधार/.test(issueText) || /aadhaar|आधार/.test(String(b.aadhaarInfo?.remark || '').toLowerCase());
-  }).length;
-  const verifiedBeneficiaryCount = assignedList.filter((b) => {
-    const aadhaar = b.aadhaarInfo || {};
-    const hasAadhaar = !!(aadhaar.type || aadhaar.aadhaarNumber || aadhaar.enrollmentNumber || aadhaar.remark);
-    const hasRation = b.rationInfo?.hasRationCard === 'yes';
-    return hasAadhaar && hasRation;
-  }).length;
-  const aadhaarTypeStats = [
-    {
-      label: 'आधार नंबर',
-      value: assignedList.filter((b) => b.aadhaarInfo?.type === 'aadhaar').length,
-      color: '#60a5fa'
-    },
-    {
-      label: 'एनरोलमेंट',
-      value: assignedList.filter((b) => b.aadhaarInfo?.type === 'enrollment').length,
-      color: '#fbbf24'
-    },
-    {
-      label: 'रिमार्क',
-      value: assignedList.filter((b) => b.aadhaarInfo?.type === 'remark').length,
-      color: '#f87171'
-    },
-    {
-      label: 'राशन कार्ड नंबर',
-      value: assignedList.filter((b) => b.rationInfo?.hasRationCard === 'yes' && String(b.rationInfo?.rationNumber || '').trim().length > 0).length,
-      color: '#34d399'
-    },
-    {
-      label: 'राशन कार्ड नहीं है',
-      value: assignedList.filter((b) => b.rationInfo?.hasRationCard === 'no').length,
-      color: '#fb7185'
-    }
-  ];
-  const maxAadhaarTypeValue = Math.max(...aadhaarTypeStats.map((stat) => stat.value), 1);
-  const completionRate = totalAssigned ? Math.round((completed / totalAssigned) * 100) : 0;
+  // Documentation Status (दस्तावेज़ स्थिति) metrics
+  const docMetrics = useMemo(() => calculateDocumentationStatus(assignedList), [assignedList]);
+  const {
+    completedCount,
+    aadhaarAvailableCount,
+    aadhaarAvailablePct,
+    aadhaarNotAvailableCount,
+    aadhaarNotAvailablePct,
+    aadhaarReviewPendingCount,
+    rationAvailableCount,
+    rationAvailablePct,
+    rationNotAvailableCount,
+    rationNotAvailablePct,
+    aadhaarPendingQuality,
+    rationPendingQuality,
+    mobileMissingQuality
+  } = docMetrics;
+
   const blockStats = getGroupStats(assignedList, 'block');
 
   const locationRows = assignedList.reduce((acc, item) => {
@@ -252,155 +231,240 @@ export default function SurveyorDashboard({
     return (b.totalSurvey + b.completed) - (a.totalSurvey + a.completed) || a.gp.localeCompare(b.gp);
   });
 
-  const statCards = [
-    {
-      key: 'total',
-      label: 'कुल सदस्य',
-      value: totalAssigned,
-      icon: Users,
-      tone: 'blue',
-      helper: `${completionRate}% प्रगति`
-    },
-    {
-      key: 'aadhaar-issue',
-      label: 'Aadhaar Issue',
-      value: aadhaarIssueCount,
-      icon: AlertTriangle,
-      tone: 'rose',
-      helper: 'Needs Aadhaar review'
-    },
-    {
-      key: 'verified-beneficiary',
-      label: 'Verified Beneficiary',
-      value: verifiedBeneficiaryCount,
-      icon: CheckCircle,
-      tone: 'emerald',
-      helper: 'Aadhaar valid'
-    },
-    {
-      key: 'completed',
-      label: 'Completed Survey',
-      value: completed,
-      icon: CheckCircle,
-      tone: 'emerald',
-      helper: 'Completed records'
-    },
-    {
-      key: 'pending',
-      label: 'Pending Survey',
-      value: pending,
-      icon: Clock,
-      tone: 'red',
-      helper: 'Requires action'
-    }
-  ];
-
   return (
     <div className="dashboard-shell">
       {showOverview && (
         <>
+          {/* Top Executive Header Card */}
           <section className="dashboard-overview-card">
             <div className="dashboard-overview-header">
               <div>
-                <div className="dashboard-overview-kicker">Survey dashboard</div>
-                <h1 className="dashboard-overview-title">Ayushman Survey Dantewada</h1>
+                <div className="dashboard-overview-kicker">प्रशासनिक कमांड सेंटर • ADMINISTRATIVE COMMAND CENTER</div>
+                <h1 className="dashboard-overview-title">आयुष्मान सर्वे दंतेवाड़ा</h1>
+                <div className="dashboard-overview-subtitle">
+                  {loading ? (
+                    <SkeletonText width="180px" />
+                  ) : (
+                    `${completed.toLocaleString('en-IN')} / ${totalAssigned.toLocaleString('en-IN')} Surveys Completed`
+                  )}
+                </div>
               </div>
               <div className="dashboard-overview-badge">
                 <span className="dashboard-overview-dot" />
-                <span>{loading ? <SkeletonText width="82px" /> : `${completionRate}% Progress`}</span>
+                <span>{loading ? <SkeletonText width="82px" /> : `${completionRate.toFixed(1)}% Complete`}</span>
               </div>
             </div>
           </section>
 
-          <section className="dashboard-summary-grid">
-            {statCards.map((card) => {
-              const Icon = card.icon;
-              const isSelected = summaryFocus === card.key;
-
-              return (
-                <button
-                  key={card.key}
-                  type="button"
-                  onClick={() => setSummaryFocus(card.key)}
-                  className={`dashboard-summary-card ${isSelected ? 'selected' : ''}`}
-                >
-                  <div className="dashboard-summary-icon">
-                    <Icon size={20} />
-                  </div>
-                  <div className="dashboard-summary-content">
-                    <div className="dashboard-summary-label">{card.label}</div>
-                    <div className="dashboard-summary-value">
-                      {loading ? <SkeletonText width="58px" className="skeleton-value" /> : card.value}
-                    </div>
-                    <div className="dashboard-summary-helper">
-                      {loading ? <SkeletonText width="92px" /> : card.helper}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </section>
-
-          <section className="dashboard-overview-main-grid">
-            <div className="dashboard-progress-panel panel-card">
-              <div className="dashboard-panel-header">
-                <div className="dashboard-panel-title">Survey Progress</div>
-                <div className="dashboard-panel-value">{loading ? <SkeletonText width="42px" /> : `${completionRate}%`}</div>
-              </div>
-
-              <div className="dashboard-metric-mini-grid">
-                <div className="dashboard-mini-metric">
-                  <div className="dashboard-mini-label">Total Survey</div>
-                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : totalAssigned}</div>
+          {/* 4 Main KPI Cards */}
+          <section className="dashboard-kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-card-inner">
+                <div className="kpi-icon-box">
+                  <Users size={22} color="#1e40af" strokeWidth={2} />
                 </div>
-                <div className="dashboard-mini-metric">
-                  <div className="dashboard-mini-label">Completed</div>
-                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : completed}</div>
-                </div>
-                <div className="dashboard-mini-metric">
-                  <div className="dashboard-mini-label">Pending</div>
-                  <div className="dashboard-mini-value">{loading ? <SkeletonText width="48px" className="skeleton-value" /> : pending}</div>
+                <div className="kpi-content">
+                  <div className="kpi-label-hi">कुल लक्ष्य</div>
+                  <div className="kpi-label-en">Total Beneficiaries</div>
+                  <div className="kpi-value">
+                    {loading ? <SkeletonText width="58px" className="skeleton-value" /> : totalAssigned.toLocaleString('en-IN')}
+                  </div>
+                  <div className="kpi-footer">
+                    {loading ? <SkeletonText width="80px" /> : `${totalAssigned.toLocaleString('en-IN')} कुल असाइन`}
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="dashboard-progress-bar">
-                <div className="dashboard-progress-fill" style={{ width: loading ? '36%' : `${completionRate}%` }} />
+            <div className="kpi-card">
+              <div className="kpi-card-inner">
+                <div className="kpi-icon-box">
+                  <CheckCircle2 size={22} color="#1e40af" strokeWidth={2} />
+                </div>
+                <div className="kpi-content">
+                  <div className="kpi-label-hi">सर्वे पूर्ण</div>
+                  <div className="kpi-label-en">Survey Completed</div>
+                  <div className="kpi-value" style={{ color: '#16a34a' }}>
+                    {loading ? <SkeletonText width="40px" className="skeleton-value" /> : completed.toLocaleString('en-IN')}
+                  </div>
+                  <div className="kpi-footer">
+                    {loading ? <SkeletonText width="80px" /> : `${completed.toLocaleString('en-IN')} / ${totalAssigned.toLocaleString('en-IN')} पूर्ण`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-card-inner">
+                <div className="kpi-icon-box">
+                  <Clock size={22} color="#1e40af" strokeWidth={2} />
+                </div>
+                <div className="kpi-content">
+                  <div className="kpi-label-hi">सर्वे लंबित</div>
+                  <div className="kpi-label-en">Survey Pending</div>
+                  <div className="kpi-value" style={{ color: '#d97706' }}>
+                    {loading ? <SkeletonText width="58px" className="skeleton-value" /> : pending.toLocaleString('en-IN')}
+                  </div>
+                  <div className="kpi-footer">
+                    {loading ? <SkeletonText width="80px" /> : `${pending.toLocaleString('en-IN')} शेष हितग्राही`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="kpi-card">
+              <div className="kpi-card-inner">
+                <div className="kpi-icon-box">
+                  <TrendingUp size={22} color="#1e40af" strokeWidth={2} />
+                </div>
+                <div className="kpi-content">
+                  <div className="kpi-label-hi">प्रगति</div>
+                  <div className="kpi-label-en">Survey Progress</div>
+                  <div className="kpi-value" style={{ color: '#2563eb' }}>
+                    {loading ? <SkeletonText width="50px" className="skeleton-value" /> : `${completionRate.toFixed(1)}%`}
+                  </div>
+                  <div className="kpi-footer">
+                    {loading ? <SkeletonText width="80px" /> : `${completionRate.toFixed(1)}% लक्ष्य पूर्ण`}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="panel-card" style={{ padding: '1rem 1.25rem 1.1rem', marginTop: '1.2rem' }}>
-            <div className="dashboard-panel-title" style={{ marginBottom: '0.9rem', fontSize: '1.05rem' }}>आधार / राशन / मोबाइल डेटा (भरे हुए रिकॉर्ड में)</div>
+          {/* Progress Bar Card */}
+          <section className="dashboard-progress-bar-card">
+            <div className="dashboard-progress-bar-header">
+              <span className="dashboard-progress-bar-label">
+                कुल सर्वे प्रगति (Overall Survey Progress)
+              </span>
+              <span className="dashboard-progress-bar-pct">
+                {loading ? <SkeletonText width="42px" /> : `${completionRate.toFixed(1)}%`}
+              </span>
+            </div>
+            <div className="dashboard-progress-track">
+              <div
+                className="dashboard-progress-fill"
+                style={{ width: loading ? '0%' : `${Math.min(completionRate, 100)}%` }}
+              />
+            </div>
+          </section>
 
-            <div style={{ display: 'grid', gap: '0.8rem' }}>
-              {aadhaarTypeStats.map((stat, index) => (
-                <div key={stat.label} className="dashboard-data-row">
-                  <div className="dashboard-data-label">{stat.label}</div>
-                  <div style={{ position: 'relative', height: '32px', borderRadius: '10px', overflow: 'hidden', background: '#e5e7eb' }}>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: loading ? `${45 + (index % 3) * 14}%` : `${(stat.value / maxAadhaarTypeValue) * 100}%`,
-                        background: stat.color,
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        paddingLeft: '0.75rem',
-                        color: '#0f172a',
-                        fontWeight: 700,
-                        fontSize: '0.9rem'
-                      }}
-                    >
-                      {loading ? '' : stat.value.toLocaleString('en-IN')}
-                    </div>
+          {/* दस्तावेज़ स्थिति (Documentation Status) Section */}
+          <section className="dashboard-doc-status-panel">
+            <div className="dashboard-doc-status-header">
+              <FileText size={20} color="#2563eb" strokeWidth={2.2} />
+              <div>
+                <h2 className="dashboard-doc-status-title">दस्तावेज़ स्थिति</h2>
+                <div className="dashboard-doc-status-kicker">
+                  DOCUMENTATION STATUS (COMPLETED SURVEYS: {loading ? '...' : completedCount.toLocaleString('en-IN')})
+                </div>
+              </div>
+            </div>
+
+            <div className="dashboard-doc-status-grid">
+              {/* Card 1: आधार उपलब्ध */}
+              <div className="doc-status-card">
+                <div className="doc-status-icon-box">
+                  <Shield size={18} color="#2563eb" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">आधार उपलब्ध</div>
+                  <div className="doc-status-title-en">Aadhaar Available</div>
+                  <div className="doc-status-value" style={{ color: '#2563eb' }}>
+                    {loading ? <SkeletonText width="28px" /> : aadhaarAvailableCount.toLocaleString('en-IN')}
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: 700, color: '#334155', fontSize: '0.96rem' }}>
-                    {loading ? <SkeletonText width="36px" /> : stat.value.toLocaleString('en-IN')}
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${aadhaarAvailablePct}% मान्य आधार`}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Card 2: आधार उपलब्ध नहीं */}
+              <div className="doc-status-card">
+                <div className="doc-status-icon-box">
+                  <AlertTriangle size={18} color="#2563eb" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">आधार उपलब्ध नहीं</div>
+                  <div className="doc-status-title-en">Aadhaar Not Available</div>
+                  <div className="doc-status-value" style={{ color: '#dc2626' }}>
+                    {loading ? <SkeletonText width="28px" /> : aadhaarNotAvailableCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${aadhaarNotAvailablePct}% रिमार्क दर्ज`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: आधार स्थिति समीक्षा */}
+              <div className="doc-status-card">
+                <div className="doc-status-icon-box">
+                  <HelpCircle size={18} color="#2563eb" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">आधार स्थिति समीक्षा</div>
+                  <div className="doc-status-title-en">Aadhaar Review/Pending</div>
+                  <div className="doc-status-value" style={{ color: '#16a34a' }}>
+                    {loading ? <SkeletonText width="28px" /> : aadhaarReviewPendingCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : (aadhaarReviewPendingCount === 0 ? 'सभी स्थिति दर्ज' : `${aadhaarReviewPendingCount} समीक्षा स्थिति`)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: राशन कार्ड उपलब्ध */}
+              <div className="doc-status-card">
+                <div className="doc-status-icon-box">
+                  <CheckCircle2 size={18} color="#2563eb" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">राशन कार्ड उपलब्ध</div>
+                  <div className="doc-status-title-en">Ration Card Available</div>
+                  <div className="doc-status-value" style={{ color: '#16a34a' }}>
+                    {loading ? <SkeletonText width="28px" /> : rationAvailableCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${rationAvailablePct}% राशन कार्ड दर्ज`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 5: राशन कार्ड नहीं है */}
+              <div className="doc-status-card">
+                <div className="doc-status-icon-box">
+                  <FileX size={18} color="#2563eb" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">राशन कार्ड नहीं है</div>
+                  <div className="doc-status-title-en">Ration Not Available</div>
+                  <div className="doc-status-value" style={{ color: '#ea580c' }}>
+                    {loading ? <SkeletonText width="28px" /> : rationNotAvailableCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${rationNotAvailablePct}% बिना राशन कार्ड`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Data Quality Strip */}
+            <div className="dashboard-doc-quality-strip">
+              <div className="dashboard-doc-quality-items">
+                <span className="dashboard-doc-quality-label">डेटा गुणवत्ता (Data Quality):</span>
+                <span className="dashboard-doc-quality-item">
+                  आधार स्थिति लंबित: <strong>{loading ? '0' : aadhaarPendingQuality}</strong>
+                </span>
+                <span className="dashboard-doc-quality-item">
+                  राशन स्थिति लंबित: <strong>{loading ? '0' : rationPendingQuality}</strong>
+                </span>
+                <span className="dashboard-doc-quality-item">
+                  मोबाइल नंबर अनुपलब्ध: <strong>{loading ? '0' : mobileMissingQuality}</strong>
+                </span>
+              </div>
+              <div className="dashboard-doc-quality-badge">
+                ✓ पूर्ण डेटा गुणवत्ता
+              </div>
             </div>
           </section>
 
