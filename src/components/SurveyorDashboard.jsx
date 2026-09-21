@@ -331,23 +331,6 @@ export default function SurveyorDashboard({
             </div>
           </section>
 
-          {/* Progress Bar Card */}
-          <section className="dashboard-progress-bar-card">
-            <div className="dashboard-progress-bar-header">
-              <span className="dashboard-progress-bar-label">
-                कुल सर्वे प्रगति (Overall Survey Progress)
-              </span>
-              <span className="dashboard-progress-bar-pct">
-                {loading ? <SkeletonText width="42px" /> : `${completionRate.toFixed(1)}%`}
-              </span>
-            </div>
-            <div className="dashboard-progress-track">
-              <div
-                className="dashboard-progress-fill"
-                style={{ width: loading ? '0%' : `${Math.min(completionRate, 100)}%` }}
-              />
-            </div>
-          </section>
 
           {/* दस्तावेज़ स्थिति (Documentation Status) Section */}
           <section className="dashboard-doc-status-panel">
