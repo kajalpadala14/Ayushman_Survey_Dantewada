@@ -7971,6 +7971,99 @@ body.dark,
   color: #94a3b8 !important;
 }
 
+/* Survey Table Badges */
+.survey-table-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
+.survey-table-badge.aadhaar {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
 
+.survey-table-badge.enrollment {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
 
+.survey-table-badge.remark {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.survey-table-badge.ration {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.survey-table-badge.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.survey-table-badge.danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.cell-dim {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .survey-table-badge.aadhaar,
+.dark .survey-table-badge.aadhaar {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .survey-table-badge.enrollment,
+.dark .survey-table-badge.enrollment {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="dark"] .survey-table-badge.remark,
+.dark .survey-table-badge.remark {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .survey-table-badge.ration,
+.dark .survey-table-badge.ration,
+[data-theme="dark"] .survey-table-badge.success,
+.dark .survey-table-badge.success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+[data-theme="dark"] .survey-table-badge.danger,
+.dark .survey-table-badge.danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="dark"] .cell-dim,
+.dark .cell-dim {
+  color: #64748b;
+}

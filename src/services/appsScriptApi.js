@@ -1,5 +1,5 @@
-import { appConfig } from '../config';
-import { syncGoogleTime, getISTDateTimeString } from '../utils/dateTime';
+import { appConfig } from '../config.js';
+import { syncGoogleTime, getISTDateTimeString } from '../utils/dateTime.js';
 
 const BOOTSTRAP_CACHE_KEY = 'dnt-bootstrap-cache-v4';
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -180,11 +180,74 @@ async function fetchSheetTable() {
   return null;
 }
 
-async function enrichHeadNameFromSheet(beneficiaries) {
-  if (!Array.isArray(beneficiaries) || beneficiaries.length === 0) return beneficiaries;
-  if (beneficiaries.some((b) => b.headName && b.headName.trim() !== '')) {
-    return beneficiaries;
+function parseGvizDate(cell) {
+  if (!cell) return '';
+  if (cell.f) return String(cell.f).trim();
+  const v = cell.v;
+  if (!v) return '';
+  if (v instanceof Date) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())} ${pad(v.getHours())}:${pad(v.getMinutes())}:${pad(v.getSeconds())}`;
   }
+  const str = String(v).trim();
+  const match = str.match(/Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)/);
+  if (match) {
+    const y = match[1];
+    const m = String(Number(match[2]) + 1).padStart(2, '0');
+    const d = String(match[3]).padStart(2, '0');
+    const hh = String(match[4] || '0').padStart(2, '0');
+    const mm = String(match[5] || '0').padStart(2, '0');
+    const ss = String(match[6] || '0').padStart(2, '0');
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  }
+  return str;
+}
+
+function resolveTableColumnIndices(cols = []) {
+  const findColIndex = (exactLabels, includeKeywords, fallbackIndex = -1) => {
+    // 1. Try exact label match
+    let idx = cols.findIndex((c) =>
+      exactLabels.some((lbl) => (c?.label || '').trim().toLowerCase() === lbl.toLowerCase())
+    );
+    if (idx !== -1) return idx;
+
+    // 2. Try keyword match
+    idx = cols.findIndex((c) => {
+      const label = (c?.label || '').toLowerCase();
+      return includeKeywords.some((kw) => label.includes(kw.toLowerCase()));
+    });
+    if (idx !== -1) return idx;
+
+    return fallbackIndex;
+  };
+
+  return {
+    district: findColIndex(['जिला'], ['district'], 0),
+    block: findColIndex(['ब्लॉक'], ['block', 'विकासखंड'], 1),
+    gp: findColIndex(['ग्राम पंचायत'], ['panchayat', 'gp'], 2),
+    village: findColIndex(['ग्राम'], ['village'], 3),
+    name: findColIndex(['सदस्य का नाम'], ['member name', 'name'], 4),
+    age: findColIndex(['आयु'], ['age'], 5),
+    gender: findColIndex(['लिंग'], ['gender'], 6),
+    marital: findColIndex(['वैवाहिक स्थिति'], ['marital'], 7),
+    head: findColIndex(['मुखिया का नाम', 'मुखिया'], ['head of family', 'head'], 8),
+    father: findColIndex(['पिता/पति का नाम', 'पिता/पति'], ['father name', 'father'], 9),
+    aadhaar: findColIndex(['आधार नंबर'], ['aadhaar number'], 10),
+    enrollment: findColIndex(['एनरोलमेंट नंबर'], ['enrollment'], 11),
+    remark: findColIndex(['रिमार्क', 'आधार रिमार्क'], ['remark'], 12),
+    ration: findColIndex(['राशन कार्ड नंबर'], ['ration number'], 13),
+    rationNo: findColIndex(['राशन कार्ड नहीं है'], ['ration not available'], 14),
+    mobile: findColIndex(['मोबाइल नंबर', 'मोबाइल'], ['mobile'], 15),
+    status: findColIndex(['सर्वे स्थिति', 'स्थिति'], ['status'], 16),
+    surveyId: findColIndex(['सर्वे आईडी'], ['survey id'], 17),
+    date: findColIndex(['सर्वे दिनांक'], ['survey date'], 18),
+    surveyor: findColIndex(['सर्वेक्षक'], ['surveyor'], 19),
+    id: findColIndex(['सदस्य आईडी', 'id'], ['beneficiaryid'], -1)
+  };
+}
+
+async function enrichSurveyDataFromSheet(beneficiaries) {
+  if (!Array.isArray(beneficiaries) || beneficiaries.length === 0) return beneficiaries;
 
   try {
     const table = await fetchSheetTable();
@@ -192,46 +255,116 @@ async function enrichHeadNameFromSheet(beneficiaries) {
     if (!Array.isArray(rows) || rows.length === 0) return beneficiaries;
 
     const cols = table?.cols || [];
-    let headColIndex = cols.findIndex((c) => c?.label && (c.label.includes('मुखिया') || c.label.toLowerCase().includes('head')));
-    let nameColIndex = cols.findIndex((c) => c?.label && (c.label.includes('सदस्य का नाम') || c.label.toLowerCase().includes('member')));
-    let fatherColIndex = cols.findIndex((c) => c?.label && (c.label.includes('पिता/पति') || c.label.toLowerCase().includes('father')));
+    const colIdx = resolveTableColumnIndices(cols);
 
-    if (headColIndex === -1) headColIndex = 8;
-    if (nameColIndex === -1) nameColIndex = 4;
-    if (fatherColIndex === -1) fatherColIndex = 9;
+    const sheetBeneficiaries = rows.map((row, i) => {
+      const c = row?.c || [];
+      const getVal = (idx) => (idx >= 0 && c[idx]?.v != null ? String(c[idx].v).trim() : '');
+      const getFormatted = (idx) => (idx >= 0 ? parseGvizDate(c[idx]) : '');
+
+      const aadhaarNum = getVal(colIdx.aadhaar);
+      const enrollmentNum = getVal(colIdx.enrollment);
+      const aadhaarRemark = getVal(colIdx.remark);
+      const rationNum = getVal(colIdx.ration);
+      const rationNo = getVal(colIdx.rationNo);
+      const hasRationCard = (rationNo === 'हाँ' || rationNo.toLowerCase() === 'yes')
+        ? 'no'
+        : ((rationNum || rationNo === 'नहीं' || rationNo.toLowerCase() === 'no') ? 'yes' : 'unknown');
+
+      let aadhaarType = 'unknown';
+      if (aadhaarNum) aadhaarType = 'aadhaar';
+      else if (enrollmentNum) aadhaarType = 'enrollment';
+      else if (aadhaarRemark) aadhaarType = 'remark';
+
+      const explicitStatus = getVal(colIdx.status);
+      const surveyId = getVal(colIdx.surveyId);
+      const surveyDate = getFormatted(colIdx.date);
+      const surveyor = getVal(colIdx.surveyor);
+      const mobile = getVal(colIdx.mobile);
+
+      const status = explicitStatus || (aadhaarNum || enrollmentNum || aadhaarRemark || surveyId ? 'Completed' : 'Pending');
+
+      return {
+        index: i,
+        name: getVal(colIdx.name),
+        headName: getVal(colIdx.head),
+        fatherName: getVal(colIdx.father),
+        age: getVal(colIdx.age),
+        gender: getVal(colIdx.gender),
+        maritalStatus: getVal(colIdx.marital),
+        district: getVal(colIdx.district),
+        block: getVal(colIdx.block),
+        gp: getVal(colIdx.gp),
+        village: getVal(colIdx.village),
+        aadhaarNumber: aadhaarNum,
+        enrollmentNumber: enrollmentNum,
+        aadhaarRemark,
+        aadhaarType,
+        rationNumber: rationNum,
+        hasRationCard,
+        rationNotAvailable: rationNo,
+        mobile,
+        status,
+        surveyId,
+        surveyDate,
+        submittedBy: surveyor
+      };
+    });
 
     const nameMap = new Map();
-    rows.forEach((row, i) => {
-      const cells = row?.c || [];
-      const mukhiya = cells[headColIndex]?.v != null ? String(cells[headColIndex].v).trim() : '';
-      const father = cells[fatherColIndex]?.v != null ? String(cells[fatherColIndex].v).trim() : '';
-      const memberName = cells[nameColIndex]?.v != null ? String(cells[nameColIndex].v).trim() : '';
-
-      if (mukhiya && memberName) {
-        nameMap.set(memberName.toLowerCase(), { mukhiya, father });
-      }
-
-      if (beneficiaries[i]) {
-        if (mukhiya) beneficiaries[i].headName = mukhiya;
-        if (father && (!beneficiaries[i].fatherName || beneficiaries[i].fatherName === 'N/A' || beneficiaries[i].fatherName === '-')) {
-          beneficiaries[i].fatherName = father;
-        }
+    sheetBeneficiaries.forEach((s) => {
+      if (s.name) {
+        nameMap.set(s.name.toLowerCase().trim(), s);
       }
     });
 
-    beneficiaries.forEach((b) => {
-      if ((!b.headName || b.headName === '-') && b.name) {
-        const found = nameMap.get(b.name.toLowerCase());
-        if (found?.mukhiya) {
-          b.headName = found.mukhiya;
-        }
-        if (found?.father && (!b.fatherName || b.fatherName === 'N/A' || b.fatherName === '-')) {
-          b.fatherName = found.father;
-        }
+    beneficiaries.forEach((b, i) => {
+      const match = sheetBeneficiaries[i] || (b.name ? nameMap.get(b.name.toLowerCase().trim()) : null);
+      if (!match) return;
+
+      if (!b.headName || b.headName === '—' || b.headName === '-') {
+        if (match.headName) b.headName = match.headName;
       }
+      if (!b.fatherName || b.fatherName === 'N/A' || b.fatherName === '—' || b.fatherName === '-') {
+        if (match.fatherName) b.fatherName = match.fatherName;
+      }
+      if (!b.maritalStatus && match.maritalStatus) b.maritalStatus = match.maritalStatus;
+      if ((b.age === undefined || b.age === 0 || b.age === '') && match.age) b.age = match.age;
+      if (!b.gender && match.gender) b.gender = match.gender;
+
+      // Survey fields enrichment
+      if (!b.surveyId && match.surveyId) b.surveyId = match.surveyId;
+      if ((!b.surveyDate || b.surveyDate === '-') && match.surveyDate) b.surveyDate = match.surveyDate;
+      if (!b.submittedBy && match.submittedBy) b.submittedBy = match.submittedBy;
+
+      if (match.status && (b.status === 'Pending' || !b.status) && match.status !== 'Pending') {
+        b.status = match.status;
+      }
+
+      // Aadhaar info enrichment
+      if (!b.aadhaarInfo) b.aadhaarInfo = {};
+      if (!b.aadhaarInfo.aadhaarNumber && match.aadhaarNumber) b.aadhaarInfo.aadhaarNumber = match.aadhaarNumber;
+      if (!b.aadhaarInfo.enrollmentNumber && match.enrollmentNumber) b.aadhaarInfo.enrollmentNumber = match.enrollmentNumber;
+      if (!b.aadhaarInfo.remark && match.aadhaarRemark) b.aadhaarInfo.remark = match.aadhaarRemark;
+      if ((!b.aadhaarInfo.type || b.aadhaarInfo.type === 'unknown') && match.aadhaarType !== 'unknown') {
+        b.aadhaarInfo.type = match.aadhaarType;
+      }
+
+      // Ration info enrichment
+      if (!b.rationInfo) b.rationInfo = {};
+      if (!b.rationInfo.rationNumber && match.rationNumber) b.rationInfo.rationNumber = match.rationNumber;
+      if ((!b.rationInfo.hasRationCard || b.rationInfo.hasRationCard === 'unknown') && match.hasRationCard !== 'unknown') {
+        b.rationInfo.hasRationCard = match.hasRationCard;
+      }
+      if (match.rationNotAvailable) b.rationInfo.rationNotAvailable = match.rationNotAvailable;
+
+      // Mobile info enrichment
+      if (!b.mobileInfo) b.mobileInfo = {};
+      if (!b.mobileInfo.mobileNumber && match.mobile) b.mobileInfo.mobileNumber = match.mobile;
+      if (!b.mobile && match.mobile) b.mobile = match.mobile;
     });
   } catch (err) {
-    console.warn('Unable to enrich mukhiya from sheet:', err);
+    console.warn('Unable to enrich survey data from sheet:', err);
   }
 
   return beneficiaries;
@@ -240,73 +373,85 @@ async function enrichHeadNameFromSheet(beneficiaries) {
 function parseBeneficiariesFromTable(table) {
   if (!table?.rows || !Array.isArray(table.rows)) return [];
   const cols = table.cols || [];
-
-  const findIdx = (terms) => {
-    return cols.findIndex((c) => {
-      const label = (c?.label || '').toLowerCase();
-      return terms.some((t) => label.includes(t.toLowerCase()));
-    });
-  };
-
-  let colDistrict = findIdx(['जिला', 'district']);
-  let colBlock = findIdx(['ब्लॉक', 'block', 'विकासखंड']);
-  let colGp = findIdx(['ग्राम पंचायत', 'gp', 'panchayat']);
-  let colVillage = findIdx(['ग्राम', 'village']);
-  let colName = findIdx(['सदस्य का नाम', 'member name', 'name', 'सदस्य']);
-  let colGender = findIdx(['लिंग', 'gender']);
-  let colAge = findIdx(['आयु', 'age']);
-  let colMobile = findIdx(['मोबाइल', 'mobile']);
-  let colHead = findIdx(['मुखिया का नाम', 'मुखिया', 'head of family', 'head']);
-  let colFather = findIdx(['पिता/पति का नाम', 'पिता/पति', 'father name', 'father']);
-  let colAadhaar = findIdx(['आधार नंबर', 'aadhaar number', 'aadhaar']);
-  let colRation = findIdx(['राशन कार्ड नंबर', 'ration number', 'ration']);
-  let colId = findIdx(['सदस्य आईडी', 'beneficiaryid', 'id']);
-  let colStatus = findIdx(['सर्वे स्थिति', 'status', 'स्थिति']);
-  let colDate = findIdx(['सर्वे दिनांक', 'survey date', 'date']);
-  let colOverall = findIdx(['परिणाम', 'overall result', 'result']);
-
-  if (colBlock === -1) colBlock = 1;
-  if (colGp === -1) colGp = 2;
-  if (colVillage === -1) colVillage = 3;
-  if (colName === -1) colName = 4;
-  if (colHead === -1) colHead = 8;
-  if (colFather === -1) colFather = 9;
-  if (colId === -1) colId = 15;
+  const colIdx = resolveTableColumnIndices(cols);
 
   return table.rows.map((row, idx) => {
     const c = row?.c || [];
     const getVal = (i) => (i >= 0 && c[i]?.v != null ? String(c[i].v).trim() : '');
+    const getFormatted = (i) => (i >= 0 ? parseGvizDate(c[i]) : '');
 
-    const name = getVal(colName);
-    const id = getVal(colId) || `AYU-BEN-${String(idx + 1).padStart(6, '0')}`;
-    const headName = getVal(colHead);
-    const fatherName = getVal(colFather);
-    const block = getVal(colBlock) || 'Dantewada';
-    const gp = getVal(colGp) || '';
-    const village = getVal(colVillage) || '';
-    const status = getVal(colStatus) || 'Pending';
-    const surveyDate = getVal(colDate);
-    const aadhaarNum = getVal(colAadhaar);
-    const rationNum = getVal(colRation);
-    const overall = getVal(colOverall);
+    const name = getVal(colIdx.name);
+    const id = (colIdx.id >= 0 && getVal(colIdx.id)) || `AYU-BEN-${String(idx + 1).padStart(6, '0')}`;
+    const headName = getVal(colIdx.head);
+    const fatherName = getVal(colIdx.father);
+    const block = getVal(colIdx.block) || 'Dantewada';
+    const gp = getVal(colIdx.gp) || '';
+    const village = getVal(colIdx.village) || '';
+    const explicitStatus = getVal(colIdx.status);
+    const surveyDate = getFormatted(colIdx.date);
+    const surveyId = getVal(colIdx.surveyId);
+    const surveyor = getVal(colIdx.surveyor);
+
+    const aadhaarNum = getVal(colIdx.aadhaar);
+    const enrollmentNum = getVal(colIdx.enrollment);
+    const aadhaarRemark = getVal(colIdx.remark);
+
+    const rationNum = getVal(colIdx.ration);
+    const rationNo = getVal(colIdx.rationNo);
+    const hasRationCard = (rationNo === 'हाँ' || rationNo.toLowerCase() === 'yes')
+      ? 'no'
+      : ((rationNum || rationNo === 'नहीं' || rationNo.toLowerCase() === 'no') ? 'yes' : 'unknown');
+
+    const mobileNum = getVal(colIdx.mobile);
+
+    let aadhaarType = 'unknown';
+    if (aadhaarNum) aadhaarType = 'aadhaar';
+    else if (enrollmentNum) aadhaarType = 'enrollment';
+    else if (aadhaarRemark) aadhaarType = 'remark';
+
+    let status = 'Pending';
+    if (explicitStatus) {
+      status = explicitStatus;
+    } else if (aadhaarNum || enrollmentNum || aadhaarRemark || surveyId) {
+      status = 'Completed';
+    }
+
+    const overallResult = status === 'Completed' ? 'VERIFIED' : (status === 'Issue Found' ? 'ISSUE FOUND' : '');
 
     return {
       id,
       name: name || `Beneficiary ${idx + 1}`,
       headName: headName || '',
       fatherName: fatherName || '',
-      district: getVal(colDistrict) || 'Dantewada',
+      district: getVal(colIdx.district) || 'दंतेवाडा',
       block,
       gp,
       village,
       status,
+      surveyId,
       surveyDate,
-      gender: getVal(colGender),
-      age: getVal(colAge),
-      mobile: getVal(colMobile),
-      aadhaarInfo: { aadhaarNumber: aadhaarNum, remark: '' },
-      rationInfo: { rationNumber: rationNum, hasRationCard: rationNum ? 'yes' : 'unknown' },
-      overallResult: overall || (status === 'Completed' ? 'VERIFIED' : '')
+      submittedBy: surveyor,
+      assignedSurveyorId: surveyor,
+      assignedSurveyorName: surveyor,
+      gender: getVal(colIdx.gender),
+      age: getVal(colIdx.age) ? Number(getVal(colIdx.age)) || getVal(colIdx.age) : '',
+      maritalStatus: getVal(colIdx.marital),
+      mobile: mobileNum,
+      aadhaarInfo: {
+        type: aadhaarType,
+        aadhaarNumber: aadhaarNum,
+        enrollmentNumber: enrollmentNum,
+        remark: aadhaarRemark
+      },
+      rationInfo: {
+        rationNumber: rationNum,
+        hasRationCard,
+        rationNotAvailable: rationNo
+      },
+      mobileInfo: {
+        mobileNumber: mobileNum
+      },
+      overallResult
     };
   }).filter((b) => Boolean(b.name));
 }
@@ -320,7 +465,7 @@ export async function getBootstrapData() {
         const data = payload?.data || null;
         if (data) {
           if (Array.isArray(data.beneficiaries)) {
-            await enrichHeadNameFromSheet(data.beneficiaries);
+            await enrichSurveyDataFromSheet(data.beneficiaries);
           }
           if (data.serverTimestamp) {
             syncGoogleTime(data.serverTimestamp);

@@ -20,8 +20,20 @@ import {
   X
 } from 'lucide-react';
 import { appConfig } from '../config';
-import { formatSurveyDateTime, formatSurveyTime } from '../utils/dateTime';
 import { exportToExcel } from '../utils/excelExport';
+import {
+  getBeneficiaryDate,
+  formatBlockName,
+  hasAadhaarIssue,
+  hasRationIssue,
+  hasValidAadhaar,
+  hasValidRation,
+  hasBothAadhaarAndRation,
+  hasBothDocsNoAyushman,
+  hasOtherIssue,
+  buildTableRows,
+  buildExcelExportRows
+} from '../utils/reportsHelper.js';
 
 const REPORT_TABS = [
   { id: 'survey', label: 'सर्वे रिपोर्ट (Survey)' },
@@ -51,213 +63,6 @@ const SkeletonText = ({ width = '100%', className = '' }) => (
 );
 
 const reportSkeletonRows = Array.from({ length: 8 }, (_, index) => index);
-
-export const getBeneficiaryDate = (b) => {
-  if (!b) return null;
-  const raw = b.surveyDate || b.date || b.updatedAt || b.createdAt || b.timestamp;
-  if (!raw || raw === '-') return null;
-  if (raw instanceof Date && !isNaN(raw.getTime())) return raw;
-  const str = String(raw).trim();
-  if (!str) return null;
-  const parsed = new Date(str.includes(' ') ? str.replace(' ', 'T') : str);
-  if (!isNaN(parsed.getTime())) return parsed;
-  const parts = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-  if (parts) {
-    const d = new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]));
-    if (!isNaN(d.getTime())) return d;
-  }
-  return null;
-};
-
-const formatDate = (value) => {
-  if (!value || value === '-') return '-';
-  const d = getBeneficiaryDate({ surveyDate: value });
-  if (!d) return String(value);
-  return d.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Asia/Kolkata'
-  });
-};
-
-const escapeCsv = (value) => {
-  const stringValue = value == null ? '' : String(value);
-  if (/[",\n\r]/.test(stringValue)) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
-  }
-  return stringValue;
-};
-
-const formatBlockName = (blockName = '') => {
-  if (!blockName) return 'Unknown';
-  const clean = blockName.split('(')[0].trim();
-  return clean || blockName;
-};
-
-// Document & issue detection helpers
-export const hasAadhaarIssue = (beneficiary) => {
-  if (!beneficiary) return false;
-  if (beneficiary.aadhaarInfo?.type === 'remark' || Boolean(beneficiary.aadhaarInfo?.remark)) {
-    return true;
-  }
-  const responses = beneficiary.parameterResponses || {};
-  const issueText = Object.values(responses)
-    .map((response) => response?.issueType || '')
-    .join(' ')
-    .toLowerCase();
-
-  if (/aadhaar|आधार/.test(issueText) || /aadhaar|आधार/.test(String(beneficiary.aadhaarInfo?.remark || '').toLowerCase())) {
-    return true;
-  }
-  if (beneficiary.status === 'Completed' && !beneficiary.aadhaarInfo?.aadhaarNumber && !beneficiary.aadhaarInfo?.enrollmentNumber) {
-    return true;
-  }
-  return false;
-};
-
-export const hasRationIssue = (beneficiary) => {
-  if (!beneficiary) return false;
-  if (beneficiary.rationInfo?.hasRationCard === 'no') return true;
-  const responses = beneficiary.parameterResponses || {};
-  const issueText = Object.values(responses)
-    .map((response) => response?.issueType || '')
-    .join(' ')
-    .toLowerCase();
-
-  if (/ration|राशन/.test(issueText)) return true;
-  if (beneficiary.status === 'Completed' && !beneficiary.rationInfo?.rationNumber && beneficiary.rationInfo?.hasRationCard !== 'yes') {
-    return true;
-  }
-  return false;
-};
-
-export const hasValidAadhaar = (beneficiary) => {
-  if (!beneficiary) return false;
-  const aadhaar = beneficiary.aadhaarInfo || {};
-  if (aadhaar.type === 'aadhaar' && aadhaar.aadhaarNumber) return true;
-  if (aadhaar.aadhaarNumber && String(aadhaar.aadhaarNumber).replace(/\D/g, '').length === 12) return true;
-  if (aadhaar.type === 'enrollment' && aadhaar.enrollmentNumber) return true;
-  if (beneficiary.aadhaarNumber && String(beneficiary.aadhaarNumber).replace(/\D/g, '').length === 12) return true;
-  if (beneficiary.hasAadhaar === true || beneficiary.aadhaarStatus === 'Verified') return true;
-  return false;
-};
-
-export const hasValidRation = (beneficiary) => {
-  if (!beneficiary) return false;
-  const ration = beneficiary.rationInfo || {};
-  if (ration.hasRationCard === 'yes') return true;
-  if (ration.rationNumber && String(ration.rationNumber).replace(/\D/g, '').length >= 10) return true;
-  if (beneficiary.rationNumber && String(beneficiary.rationNumber).replace(/\D/g, '').length >= 10) return true;
-  if (beneficiary.hasRationCard === true || beneficiary.hasRationCard === 'yes') return true;
-  return false;
-};
-
-export const hasBothAadhaarAndRation = (beneficiary) => {
-  return hasValidAadhaar(beneficiary) && hasValidRation(beneficiary);
-};
-
-export const isAyushmanCardMade = (beneficiary) => {
-  return Boolean(
-    beneficiary.hasAyushmanCard === true ||
-    beneficiary.ayushmanCardStatus === 'Made' ||
-    beneficiary.ayushmanCardStatus === 'Available' ||
-    beneficiary.parameterResponses?.P3?.status === 'सही'
-  );
-};
-
-export const hasBothDocsNoAyushman = (beneficiary) => {
-  return hasBothAadhaarAndRation(beneficiary) && !isAyushmanCardMade(beneficiary);
-};
-
-export const hasOtherIssue = (beneficiary) => {
-  const responses = beneficiary.parameterResponses || {};
-  return Object.values(responses).some((r) => {
-    const issue = String(r?.issueType || '').toLowerCase();
-    return issue && !/aadhaar|आधार|ration|राशन/.test(issue);
-  });
-};
-
-const buildTableRows = (beneficiariesList, activeTabKey) => {
-  if (activeTabKey === 'verified') {
-    return beneficiariesList.map((b) => {
-      const hasAadhaar = hasValidAadhaar(b);
-      const isVerified = hasBothAadhaarAndRation(b) || b.overallResult === 'VERIFIED';
-
-      return {
-        id: b.id,
-        name: b.name,
-        headName: b.headName || '',
-        fatherName: b.fatherName || '',
-        janpad: b.block || 'Unknown',
-        gp: b.gp || 'Unknown',
-        gram: b.village || 'Unknown',
-        aadhaarStatus: hasAadhaar ? 'Verified' : 'Pending',
-        verifiedStatus: isVerified ? 'Verified Beneficiary' : 'Not Verified',
-        status: b.status || 'Pending',
-        date: b.surveyDate ? formatDate(b.surveyDate) : '-'
-      };
-    });
-  }
-
-  if (activeTabKey === 'pending') {
-    return beneficiariesList.map((b) => ({
-      id: b.id,
-      name: b.name,
-      headName: b.headName || '',
-      fatherName: b.fatherName || '',
-      janpad: b.block || 'Unknown',
-      gp: b.gp || 'Unknown',
-      gram: b.village || 'Unknown',
-      status: b.status || 'Pending',
-      date: '-'
-    }));
-  }
-
-  if (activeTabKey === 'date') {
-    const sorted = [...beneficiariesList].sort((a, b) => {
-      const da = getBeneficiaryDate(a);
-      const db = getBeneficiaryDate(b);
-      if (da && db) return db.getTime() - da.getTime();
-      if (da) return -1;
-      if (db) return 1;
-      return 0;
-    });
-
-    return sorted.map((b) => {
-      const d = getBeneficiaryDate(b);
-      let dateDisplay = '-';
-      if (b.surveyDate) {
-        dateDisplay = formatSurveyDateTime(b.surveyDate) || formatDate(b.surveyDate);
-      } else if (d) {
-        dateDisplay = formatDate(d);
-      }
-      return {
-        id: b.id,
-        name: b.name,
-        headName: b.headName || '',
-        fatherName: b.fatherName || '',
-        janpad: b.block || 'Unknown',
-        gp: b.gp || 'Unknown',
-        gram: b.village || 'Unknown',
-        date: dateDisplay,
-        status: b.status || 'Pending'
-      };
-    });
-  }
-
-  return beneficiariesList.map((b) => ({
-    id: b.id,
-    name: b.name,
-    headName: b.headName || '',
-    fatherName: b.fatherName || '',
-    janpad: b.block || 'Unknown',
-    gp: b.gp || 'Unknown',
-    gram: b.village || 'Unknown',
-    status: b.status || 'Pending',
-    date: b.surveyDate ? formatDate(b.surveyDate) : '-'
-  }));
-};
 
 export default function ReportsDashboard({
   beneficiaries = [],
@@ -565,20 +370,7 @@ export default function ReportsDashboard({
       return rows;
     }
 
-    return reportRows.map((r, idx) => ({
-      'क्र. (S.No.)': idx + 1,
-      'हितग्राही ID (ID)': r.id,
-      'हितग्राही का नाम (Beneficiary Name)': r.name,
-      'मुखिया का नाम (Head of Family)': r.headName || '—',
-      'पिता/पति का नाम (Father/Husband)': r.fatherName || '—',
-      'विकासखंड (Block)': r.janpad,
-      'ग्राम पंचायत (Gram Panchayat)': r.gp,
-      'ग्राम (Village)': r.gram,
-      ...(r.aadhaarStatus ? { 'आधार स्थिति (Aadhaar)': r.aadhaarStatus } : {}),
-      ...(r.verifiedStatus ? { 'सत्यापन स्थिति (Verification)': r.verifiedStatus } : {}),
-      'सर्वे स्थिति (Status)': r.status,
-      'सर्वे दिनांक (Survey Date)': r.date
-    }));
+    return buildExcelExportRows(reportRows);
   };
 
   const getExcelFileName = () => {
@@ -627,10 +419,10 @@ export default function ReportsDashboard({
   };
 
   const headersByTab = {
-    survey: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे स्थिति', 'सर्वे दिनांक'],
-    verified: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार स्थिति', 'सत्यापन स्थिति', 'सर्वे दिनांक'],
+    survey: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सर्वे स्थिति', 'सर्वे दिनांक'],
+    verified: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सत्यापन स्थिति', 'सर्वे दिनांक'],
     pending: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे स्थिति'],
-    date: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'सर्वे दिनांक व समय', 'सर्वे स्थिति']
+    date: ['ID', 'हितग्राही का नाम', 'मुखिया / पिता का नाम', 'विकासखंड', 'ग्राम पंचायत', 'ग्राम', 'आधार विवरण', 'राशन कार्ड', 'सर्वे दिनांक व समय', 'सर्वे स्थिति']
   };
 
   const renderCellValue = (row, header) => {
@@ -658,6 +450,48 @@ export default function ReportsDashboard({
     if (header === 'विकासखंड') return row.janpad || '—';
     if (header === 'ग्राम पंचायत') return row.gp || '—';
     if (header === 'ग्राम') return row.gram || '—';
+
+    if (header === 'आधार विवरण') {
+      if (row.aadhaarNumber) {
+        return (
+          <span className="survey-table-badge aadhaar" title={`आधार नंबर: ${row.aadhaarNumber}`}>
+            आधार: {row.aadhaarNumber}
+          </span>
+        );
+      }
+      if (row.enrollmentNumber) {
+        return (
+          <span className="survey-table-badge enrollment" title={`एनरोलमेंट नंबर: ${row.enrollmentNumber}`}>
+            Enr: {row.enrollmentNumber}
+          </span>
+        );
+      }
+      if (row.aadhaarRemark) {
+        return (
+          <span className="survey-table-badge remark" title={`रिमार्क: ${row.aadhaarRemark}`}>
+            {row.aadhaarRemark}
+          </span>
+        );
+      }
+      return <span className="cell-dim">—</span>;
+    }
+
+    if (header === 'राशन कार्ड') {
+      if (row.rationNumber) {
+        return (
+          <span className="survey-table-badge ration" title={`राशन कार्ड नंबर: ${row.rationNumber}`}>
+            राशन: {row.rationNumber}
+          </span>
+        );
+      }
+      if (row.hasRationCard === 'no' || row.rationNotAvailable === 'हाँ') {
+        return <span className="survey-table-badge danger">कार्ड नहीं है</span>;
+      }
+      if (row.hasRationCard === 'yes') {
+        return <span className="survey-table-badge success">उपलब्ध</span>;
+      }
+      return <span className="cell-dim">—</span>;
+    }
 
     if (header === 'सर्वे स्थिति') {
       if (row.status === 'Completed') {

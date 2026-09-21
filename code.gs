@@ -161,8 +161,8 @@ function mapBeneficiaryRow(rawRow, index) {
   const fatherName = clean(getValue(row, ['पिता/पति का नाम', 'पिता/पति', 'Father Name', 'fatherName']));
   const headName = clean(getValue(row, ['मुखिया का नाम', 'मुखिया', 'Head of Family', 'headOfFamilyName', 'headName', 'mukhiyaName', 'mukhiya']));
   const age = mapAge(getValue(row, ['आयु', 'Age', 'age']));
-  const gender = mapGender(getValue(row, ['लिंग', 'Gender', 'gender']));
-  const mobile = isValidIndianMobile(getValue(row, ['मोबाइल नंबर', 'Mobile Number', 'mobile']));
+  const rawMobile = clean(getValue(row, ['मोबाइल नंबर', 'Mobile Number', 'mobile']));
+  const mobile = isValidIndianMobile(rawMobile) || rawMobile;
 
   const aadhaarNumber = clean(getValue(row, ['आधार नंबर', 'Aadhaar Number', 'aadhaarNumber']));
   const enrollmentNumber = clean(getValue(row, ['एनरोलमेंट नंबर', 'Enrollment Number', 'enrollmentNumber']));
