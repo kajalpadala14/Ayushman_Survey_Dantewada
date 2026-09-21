@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Download,
   FileText,
   FileX,
   HelpCircle,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { formatSurveyTime } from '../utils/dateTime';
 import { calculateDocumentationStatus } from '../utils/dashboardMetrics';
+import { exportToExcel } from '../utils/excelExport';
 
 const hindiGender = {
   Male: 'पुरुष',
@@ -246,6 +248,85 @@ export default function SurveyorDashboard({
     { totalSurvey: 0, completed: 0, pending: 0 }
   );
 
+  const handleDownloadGpReport = () => {
+    if (!gpTableRows || gpTableRows.length === 0) {
+      alert('डाउनलोड करने के लिए कोई डेटा उपलब्ध नहीं है।');
+      return;
+    }
+
+    const headers = [
+      'क्र. (S.No.)',
+      'ग्राम पंचायत (Gram Panchayat)',
+      'विकासखंड (Block)',
+      'कुल सर्वे (Total Survey)',
+      'पूर्ण (Completed)',
+      'लंबित (Pending)'
+    ];
+
+    const dataRows = gpTableRows.map((r, idx) => [
+      idx + 1,
+      r.gp,
+      r.block,
+      r.totalSurvey,
+      r.completed,
+      r.pending
+    ]);
+
+    dataRows.push([
+      '',
+      'कुल योग (Total)',
+      '—',
+      gpTotals.totalSurvey,
+      gpTotals.completed,
+      gpTotals.pending
+    ]);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel(
+      [headers, ...dataRows],
+      `Gram_Panchayat_Wise_Report_${dateStr}.xlsx`,
+      'GP_Wise_Report'
+    );
+  };
+
+  const handleDownloadBlockReport = () => {
+    if (!locationTableRows || locationTableRows.length === 0) {
+      alert('डाउनलोड करने के लिए कोई डेटा उपलब्ध नहीं है।');
+      return;
+    }
+
+    const headers = [
+      'क्र. (S.No.)',
+      'विकासखंड (Block)',
+      'कुल सर्वे (Total Survey)',
+      'पूर्ण (Completed)',
+      'लंबित (Pending)'
+    ];
+
+    const dataRows = locationTableRows.map((r, idx) => [
+      idx + 1,
+      r.block,
+      r.totalSurvey,
+      r.completed,
+      r.pending
+    ]);
+
+    dataRows.push([
+      '',
+      'कुल योग (Total)',
+      locationTotals.totalSurvey,
+      locationTotals.completed,
+      locationTotals.pending
+    ]);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel(
+      [headers, ...dataRows],
+      `Block_Wise_Report_${dateStr}.xlsx`,
+      'Block_Wise_Report'
+    );
+  };
+
   return (
     <div className="dashboard-shell">
       {showOverview && (
@@ -450,7 +531,18 @@ export default function SurveyorDashboard({
           </section>
 
           <section className="dashboard-table-panel panel-card dashboard-location-panel">
-            <div className="dashboard-panel-title dashboard-table-title">Block-wise Survey</div>
+            <div className="dashboard-recent-header">
+              <div className="dashboard-panel-title dashboard-table-title">Block-wise Survey</div>
+              <button
+                type="button"
+                className="dashboard-download-btn"
+                onClick={handleDownloadBlockReport}
+                title="ब्लॉक-वार रिपोर्ट एक्सेल डाउनलोड करें"
+              >
+                <Download size={14} />
+                <span>Download Excel</span>
+              </button>
+            </div>
             <div className="dashboard-table-wrap">
               <table className="dashboard-table dashboard-location-table">
                 <thead>
@@ -497,6 +589,15 @@ export default function SurveyorDashboard({
           <section className="dashboard-table-panel panel-card dashboard-gp-panel">
             <div className="dashboard-recent-header">
               <div className="dashboard-panel-title">Gram Panchayat-wise Report</div>
+              <button
+                type="button"
+                className="dashboard-download-btn"
+                onClick={handleDownloadGpReport}
+                title="ग्राम पंचायत-वार रिपोर्ट एक्सेल डाउनलोड करें"
+              >
+                <Download size={14} />
+                <span>Download Excel</span>
+              </button>
             </div>
 
             <div className="dashboard-table-wrap">
