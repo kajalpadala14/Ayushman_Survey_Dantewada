@@ -204,6 +204,15 @@ export default function SurveyorDashboard({
     return (b.totalSurvey + b.completed) - (a.totalSurvey + a.completed) || a.block.localeCompare(b.block);
   });
 
+  const locationTotals = locationTableRows.reduce(
+    (acc, row) => ({
+      totalSurvey: acc.totalSurvey + row.totalSurvey,
+      completed: acc.completed + row.completed,
+      pending: acc.pending + row.pending
+    }),
+    { totalSurvey: 0, completed: 0, pending: 0 }
+  );
+
   const gpRows = assignedList.reduce((acc, item) => {
     const key = item.gp || 'Unknown';
     if (!acc[key]) {
@@ -227,6 +236,15 @@ export default function SurveyorDashboard({
   const gpTableRows = Object.values(gpRows).sort((a, b) => {
     return (b.totalSurvey + b.completed) - (a.totalSurvey + a.completed) || a.gp.localeCompare(b.gp);
   });
+
+  const gpTotals = gpTableRows.reduce(
+    (acc, row) => ({
+      totalSurvey: acc.totalSurvey + row.totalSurvey,
+      completed: acc.completed + row.completed,
+      pending: acc.pending + row.pending
+    }),
+    { totalSurvey: 0, completed: 0, pending: 0 }
+  );
 
   return (
     <div className="dashboard-shell">
@@ -451,14 +469,26 @@ export default function SurveyorDashboard({
                       <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
                       <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
                     </tr>
-                  )) : locationTableRows.map((row) => (
-                    <tr key={row.block}>
-                      <td data-label="Block">{row.block}</td>
-                      <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
-                      <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
-                      <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
-                    </tr>
-                  ))}
+                  )) : (
+                    <>
+                      {locationTableRows.map((row) => (
+                        <tr key={row.block}>
+                          <td data-label="Block">{row.block}</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
+                        </tr>
+                      ))}
+                      {locationTableRows.length > 0 && (
+                        <tr className="dashboard-table-total-row">
+                          <td data-label="Block" className="strong-cell">Total</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{locationTotals.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{locationTotals.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{locationTotals.pending}</td>
+                        </tr>
+                      )}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -489,15 +519,28 @@ export default function SurveyorDashboard({
                       <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
                       <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
                     </tr>
-                  )) : gpTableRows.map((row) => (
-                    <tr key={row.gp}>
-                      <td data-label="Gram Panchayat" className="dashboard-beneficiary-name">{row.gp}</td>
-                      <td data-label="Block">{row.block}</td>
-                      <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
-                      <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
-                      <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
-                    </tr>
-                  ))}
+                  )) : (
+                    <>
+                      {gpTableRows.map((row) => (
+                        <tr key={row.gp}>
+                          <td data-label="Gram Panchayat" className="dashboard-beneficiary-name">{row.gp}</td>
+                          <td data-label="Block">{row.block}</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
+                        </tr>
+                      ))}
+                      {gpTableRows.length > 0 && (
+                        <tr className="dashboard-table-total-row">
+                          <td data-label="Gram Panchayat" className="dashboard-beneficiary-name strong-cell">Total</td>
+                          <td data-label="Block">—</td>
+                          <td data-label="Total Survey" className="text-right strong-cell">{gpTotals.totalSurvey}</td>
+                          <td data-label="Completed" className="text-right completed-cell">{gpTotals.completed}</td>
+                          <td data-label="Pending" className="text-right pending-cell">{gpTotals.pending}</td>
+                        </tr>
+                      )}
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -2862,6 +2862,48 @@ body {
   font-weight: 700;
 }
 
+.dashboard-table tbody tr.dashboard-table-total-row td {
+  background: #f8fafc;
+  font-weight: 800;
+  border-top: 2px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+  color: #0f172a;
+}
+
+.dashboard-table tbody tr.dashboard-table-total-row td.strong-cell {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.dashboard-table tbody tr.dashboard-table-total-row td.completed-cell {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.dashboard-table tbody tr.dashboard-table-total-row td.pending-cell {
+  color: #b45309;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .dashboard-table tbody tr.dashboard-table-total-row td {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .dashboard-table tbody tr.dashboard-table-total-row td.strong-cell {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .dashboard-table tbody tr.dashboard-table-total-row td.completed-cell {
+  color: #34d399;
+}
+
+[data-theme="dark"] .dashboard-table tbody tr.dashboard-table-total-row td.pending-cell {
+  color: #fbbf24;
+}
+
 .dashboard-recent-header {
   display: flex;
   align-items: center;
