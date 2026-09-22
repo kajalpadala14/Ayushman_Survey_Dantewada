@@ -2,16 +2,21 @@ import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
   FileText,
   FileX,
-  HelpCircle,
   Phone,
   Search,
   Shield,
+  ShieldCheck,
+  Sparkles,
   TrendingUp,
-  Users
+  Users,
+  X,
+  XCircle
 } from 'lucide-react';
 import { formatSurveyTime } from '../utils/dateTime';
 import { calculateDocumentationStatus } from '../utils/dashboardMetrics';
@@ -170,16 +175,201 @@ export default function SurveyorDashboard({
   const docMetrics = useMemo(() => calculateDocumentationStatus(assignedList), [assignedList]);
   const {
     completedCount,
-    aadhaarAvailableCount,
-    aadhaarAvailablePct,
+    bothAvailableCount,
+    bothAvailablePct,
+    bothAvailableList,
+    onlyAadhaarCount,
+    onlyAadhaarPct,
+    onlyAadhaarList,
+    onlyRationCount,
+    onlyRationPct,
+    onlyRationList,
+    neitherAvailableCount,
+    neitherAvailablePct,
+    neitherAvailableList,
     aadhaarNotAvailableCount,
     aadhaarNotAvailablePct,
-    aadhaarReviewPendingCount,
-    rationAvailableCount,
-    rationAvailablePct,
+    aadhaarNotAvailableList,
     rationNotAvailableCount,
-    rationNotAvailablePct
+    rationNotAvailablePct,
+    rationNotAvailableList
   } = docMetrics;
+
+  const [selectedDocCard, setSelectedDocCard] = useState(null);
+  const [docSearch, setDocSearch] = useState('');
+  const [docPage, setDocPage] = useState(1);
+  const DOC_PAGE_SIZE = 10;
+
+  const activeDocData = useMemo(() => {
+    switch (selectedDocCard) {
+      case 'both':
+        return {
+          key: 'both',
+          titleHi: 'आधार + राशन दोनों उपलब्ध',
+          titleEn: 'Both Available',
+          list: bothAvailableList || [],
+          count: bothAvailableCount,
+          pct: bothAvailablePct,
+          color: '#16a34a'
+        };
+      case 'only-aadhaar':
+        return {
+          key: 'only-aadhaar',
+          titleHi: 'केवल आधार उपलब्ध',
+          titleEn: 'Only Aadhaar',
+          list: onlyAadhaarList || [],
+          count: onlyAadhaarCount,
+          pct: onlyAadhaarPct,
+          color: '#2563eb'
+        };
+      case 'only-ration':
+        return {
+          key: 'only-ration',
+          titleHi: 'केवल राशन उपलब्ध',
+          titleEn: 'Only Ration',
+          list: onlyRationList || [],
+          count: onlyRationCount,
+          pct: onlyRationPct,
+          color: '#7c3aed'
+        };
+      case 'aadhaar-not-available':
+        return {
+          key: 'aadhaar-not-available',
+          titleHi: 'आधार उपलब्ध नहीं',
+          titleEn: 'Aadhaar Not Available',
+          list: aadhaarNotAvailableList || [],
+          count: aadhaarNotAvailableCount,
+          pct: aadhaarNotAvailablePct,
+          color: '#dc2626'
+        };
+      case 'ration-not-available':
+        return {
+          key: 'ration-not-available',
+          titleHi: 'राशन कार्ड नहीं है',
+          titleEn: 'Ration Not Available',
+          list: rationNotAvailableList || [],
+          count: rationNotAvailableCount,
+          pct: rationNotAvailablePct,
+          color: '#ea580c'
+        };
+      case 'neither':
+        return {
+          key: 'neither',
+          titleHi: 'दोनों उपलब्ध नहीं',
+          titleEn: 'Neither Available',
+          list: neitherAvailableList || [],
+          count: neitherAvailableCount,
+          pct: neitherAvailablePct,
+          color: '#be123c'
+        };
+      default:
+        return null;
+    }
+  }, [
+    selectedDocCard,
+    bothAvailableList, bothAvailableCount, bothAvailablePct,
+    onlyAadhaarList, onlyAadhaarCount, onlyAadhaarPct,
+    onlyRationList, onlyRationCount, onlyRationPct,
+    aadhaarNotAvailableList, aadhaarNotAvailableCount, aadhaarNotAvailablePct,
+    rationNotAvailableList, rationNotAvailableCount, rationNotAvailablePct,
+    neitherAvailableList, neitherAvailableCount, neitherAvailablePct
+  ]);
+
+  const filteredDocBeneficiaries = useMemo(() => {
+    if (!activeDocData) return [];
+    const q = docSearch.trim().toLowerCase();
+    if (!q) return activeDocData.list;
+    return activeDocData.list.filter((b) => {
+      const name = String(b.name || '').toLowerCase();
+      const father = String(b.fatherName || b.headName || '').toLowerCase();
+      const block = String(b.block || '').toLowerCase();
+      const gp = String(b.gp || '').toLowerCase();
+      const village = String(b.village || '').toLowerCase();
+      const mobile = String(b.mobile || '').toLowerCase();
+      const aNum = String(b.aadhaarInfo?.aadhaarNumber || b.aadhaarNumber || '');
+      const rNum = String(b.rationInfo?.rationNumber || b.rationNumber || '');
+      const remark = String(b.aadhaarInfo?.remark || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        father.includes(q) ||
+        block.includes(q) ||
+        gp.includes(q) ||
+        village.includes(q) ||
+        mobile.includes(q) ||
+        aNum.includes(q) ||
+        rNum.includes(q) ||
+        remark.includes(q)
+      );
+    });
+  }, [activeDocData, docSearch]);
+
+  const totalDocPages = Math.ceil(filteredDocBeneficiaries.length / DOC_PAGE_SIZE) || 1;
+  const paginatedDocBeneficiaries = useMemo(() => {
+    const start = (docPage - 1) * DOC_PAGE_SIZE;
+    return filteredDocBeneficiaries.slice(start, start + DOC_PAGE_SIZE);
+  }, [filteredDocBeneficiaries, docPage]);
+
+  const handleDownloadFilteredDocReport = () => {
+    if (!filteredDocBeneficiaries || filteredDocBeneficiaries.length === 0) {
+      alert('डाउनलोड करने के लिए कोई डेटा उपलब्ध नहीं है।');
+      return;
+    }
+
+    const headers = [
+      'क्र. (S.No.)',
+      'हितग्राही का नाम (Name)',
+      'पिता/पति/मुखिया (Guardian)',
+      'विकासखंड (Block)',
+      'ग्राम पंचायत (Gram Panchayat)',
+      'गाँव (Village)',
+      'लिंग (Gender)',
+      'आयु (Age)',
+      'आधार स्थिति / नंबर',
+      'राशन कार्ड स्थिति / नंबर',
+      'मोबाइल (Mobile)',
+      'सर्वे स्थिति (Status)'
+    ];
+
+    const dataRows = filteredDocBeneficiaries.map((b, idx) => {
+      const a = b.aadhaarInfo || {};
+      const r = b.rationInfo || {};
+      const aadhaarDisplay = a.aadhaarNumber
+        ? `Aadhaar: ${a.aadhaarNumber}`
+        : a.enrollmentNumber
+        ? `Enroll: ${a.enrollmentNumber}`
+        : a.remark
+        ? `Remark: ${a.remark}`
+        : '—';
+      const rationDisplay = r.rationNumber
+        ? `Ration: ${r.rationNumber}`
+        : r.hasRationCard === 'no'
+        ? 'नहीं है'
+        : '—';
+
+      return [
+        idx + 1,
+        b.name || '',
+        b.fatherName || b.headName || '',
+        b.block || '',
+        b.gp || '',
+        b.village || '',
+        b.gender || '',
+        b.age || '',
+        aadhaarDisplay,
+        rationDisplay,
+        b.mobile || '',
+        b.status || ''
+      ];
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const safeTitle = (activeDocData?.titleEn || 'Report').replace(/\s+/g, '_');
+    exportToExcel(
+      [headers, ...dataRows],
+      `Doc_Status_${safeTitle}_${dateStr}.xlsx`,
+      'Beneficiaries'
+    );
+  };
 
   const blockStats = getGroupStats(assignedList, 'block');
 
@@ -215,79 +405,6 @@ export default function SurveyorDashboard({
     { totalSurvey: 0, completed: 0, pending: 0 }
   );
 
-  const gpRows = assignedList.reduce((acc, item) => {
-    const key = item.gp || 'Unknown';
-    if (!acc[key]) {
-      acc[key] = {
-        gp: item.gp || 'Unknown',
-        block: item.block || 'Unknown',
-        totalSurvey: 0,
-        completed: 0,
-        pending: 0
-      };
-    }
-    acc[key].totalSurvey += 1;
-    if (item.status === 'Completed') {
-      acc[key].completed += 1;
-    } else {
-      acc[key].pending += 1;
-    }
-    return acc;
-  }, {});
-
-  const gpTableRows = Object.values(gpRows).sort((a, b) => {
-    return (b.totalSurvey + b.completed) - (a.totalSurvey + a.completed) || a.gp.localeCompare(b.gp);
-  });
-
-  const gpTotals = gpTableRows.reduce(
-    (acc, row) => ({
-      totalSurvey: acc.totalSurvey + row.totalSurvey,
-      completed: acc.completed + row.completed,
-      pending: acc.pending + row.pending
-    }),
-    { totalSurvey: 0, completed: 0, pending: 0 }
-  );
-
-  const handleDownloadGpReport = () => {
-    if (!gpTableRows || gpTableRows.length === 0) {
-      alert('डाउनलोड करने के लिए कोई डेटा उपलब्ध नहीं है।');
-      return;
-    }
-
-    const headers = [
-      'क्र. (S.No.)',
-      'ग्राम पंचायत (Gram Panchayat)',
-      'विकासखंड (Block)',
-      'कुल सर्वे (Total Survey)',
-      'पूर्ण (Completed)',
-      'लंबित (Pending)'
-    ];
-
-    const dataRows = gpTableRows.map((r, idx) => [
-      idx + 1,
-      r.gp,
-      r.block,
-      r.totalSurvey,
-      r.completed,
-      r.pending
-    ]);
-
-    dataRows.push([
-      '',
-      'कुल योग (Total)',
-      '—',
-      gpTotals.totalSurvey,
-      gpTotals.completed,
-      gpTotals.pending
-    ]);
-
-    const dateStr = new Date().toISOString().slice(0, 10);
-    exportToExcel(
-      [headers, ...dataRows],
-      `Gram_Panchayat_Wise_Report_${dateStr}.xlsx`,
-      'GP_Wise_Report'
-    );
-  };
 
   const handleDownloadBlockReport = () => {
     if (!locationTableRows || locationTableRows.length === 0) {
@@ -510,36 +627,153 @@ export default function SurveyorDashboard({
           <section className="dashboard-doc-status-panel">
             <div className="dashboard-doc-status-header">
               <FileText size={20} color="#2563eb" strokeWidth={2.2} />
-              <div>
-                <h2 className="dashboard-doc-status-title">दस्तावेज़ स्थिति</h2>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h2 className="dashboard-doc-status-title">दस्तावेज़ स्थिति</h2>
+                  <span className="dashboard-doc-status-badge">
+                    पूर्ण सर्वेक्षण आधार: {loading ? '...' : completedCount.toLocaleString('en-IN')}
+                  </span>
+                </div>
                 <div className="dashboard-doc-status-kicker">
                   DOCUMENTATION STATUS (COMPLETED SURVEYS: {loading ? '...' : completedCount.toLocaleString('en-IN')})
+                </div>
+                <div className="dashboard-doc-validation-text">
+                  ✓ सत्यापन (100%): दोनों उपलब्ध ({bothAvailableCount}) + केवल आधार ({onlyAadhaarCount}) + केवल राशन ({onlyRationCount}) + दोनों नहीं ({neitherAvailableCount}) = {completedCount}
                 </div>
               </div>
             </div>
 
             <div className="dashboard-doc-status-grid">
-              {/* Card 1: आधार उपलब्ध */}
-              <div className="doc-status-card">
-                <div className="doc-status-icon-box">
+              {/* Card 1: आधार + राशन दोनों उपलब्ध */}
+              <div
+                className={`doc-status-card ${selectedDocCard === 'both' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'both' ? null : 'both');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'both' ? null : 'both');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="आधार + राशन दोनों उपलब्ध हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#16a34a' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#f0fdf4' }}>
+                  <ShieldCheck size={18} color="#16a34a" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">आधार + राशन दोनों उपलब्ध</div>
+                  <div className="doc-status-title-en">Both Available</div>
+                  <div className="doc-status-value" style={{ color: '#16a34a' }}>
+                    {loading ? <SkeletonText width="28px" /> : bothAvailableCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${bothAvailablePct}% दोनों दस्तावेज पूर्ण`}
+                  </div>
+                </div>
+                {selectedDocCard === 'both' && <span className="doc-card-active-tag">चयनित</span>}
+              </div>
+
+              {/* Card 2: केवल आधार उपलब्ध */}
+              <div
+                className={`doc-status-card ${selectedDocCard === 'only-aadhaar' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'only-aadhaar' ? null : 'only-aadhaar');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'only-aadhaar' ? null : 'only-aadhaar');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="केवल आधार उपलब्ध हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#2563eb' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#eff6ff' }}>
                   <Shield size={18} color="#2563eb" strokeWidth={2.2} />
                 </div>
                 <div className="doc-status-body">
-                  <div className="doc-status-title-hi">आधार उपलब्ध</div>
-                  <div className="doc-status-title-en">Aadhaar Available</div>
+                  <div className="doc-status-title-hi">केवल आधार उपलब्ध</div>
+                  <div className="doc-status-title-en">Only Aadhaar</div>
                   <div className="doc-status-value" style={{ color: '#2563eb' }}>
-                    {loading ? <SkeletonText width="28px" /> : aadhaarAvailableCount.toLocaleString('en-IN')}
+                    {loading ? <SkeletonText width="28px" /> : onlyAadhaarCount.toLocaleString('en-IN')}
                   </div>
                   <div className="doc-status-footer">
-                    {loading ? <SkeletonText width="65px" /> : `${aadhaarAvailablePct}% मान्य आधार`}
+                    {loading ? <SkeletonText width="65px" /> : `${onlyAadhaarPct}% बिना राशन कार्ड`}
                   </div>
                 </div>
+                {selectedDocCard === 'only-aadhaar' && <span className="doc-card-active-tag">चयनित</span>}
               </div>
 
-              {/* Card 2: आधार उपलब्ध नहीं */}
-              <div className="doc-status-card">
-                <div className="doc-status-icon-box">
-                  <AlertTriangle size={18} color="#2563eb" strokeWidth={2.2} />
+              {/* Card 3: केवल राशन उपलब्ध */}
+              <div
+                className={`doc-status-card ${selectedDocCard === 'only-ration' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'only-ration' ? null : 'only-ration');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'only-ration' ? null : 'only-ration');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="केवल राशन उपलब्ध हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#7c3aed' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#f5f3ff' }}>
+                  <FileText size={18} color="#7c3aed" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">केवल राशन उपलब्ध</div>
+                  <div className="doc-status-title-en">Only Ration</div>
+                  <div className="doc-status-value" style={{ color: '#7c3aed' }}>
+                    {loading ? <SkeletonText width="28px" /> : onlyRationCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${onlyRationPct}% बिना आधार (रिमार्क)`}
+                  </div>
+                </div>
+                {selectedDocCard === 'only-ration' && <span className="doc-card-active-tag">चयनित</span>}
+              </div>
+
+              {/* Card 4: आधार उपलब्ध नहीं */}
+              <div
+                className={`doc-status-card ${selectedDocCard === 'aadhaar-not-available' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'aadhaar-not-available' ? null : 'aadhaar-not-available');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'aadhaar-not-available' ? null : 'aadhaar-not-available');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="आधार उपलब्ध नहीं (रिमार्क दर्ज) हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#dc2626' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#fef2f2' }}>
+                  <AlertTriangle size={18} color="#dc2626" strokeWidth={2.2} />
                 </div>
                 <div className="doc-status-body">
                   <div className="doc-status-title-hi">आधार उपलब्ध नहीं</div>
@@ -551,46 +785,31 @@ export default function SurveyorDashboard({
                     {loading ? <SkeletonText width="65px" /> : `${aadhaarNotAvailablePct}% रिमार्क दर्ज`}
                   </div>
                 </div>
-              </div>
-
-              {/* Card 3: आधार स्थिति समीक्षा */}
-              <div className="doc-status-card">
-                <div className="doc-status-icon-box">
-                  <HelpCircle size={18} color="#2563eb" strokeWidth={2.2} />
-                </div>
-                <div className="doc-status-body">
-                  <div className="doc-status-title-hi">आधार स्थिति समीक्षा</div>
-                  <div className="doc-status-title-en">Aadhaar Review/Pending</div>
-                  <div className="doc-status-value" style={{ color: '#16a34a' }}>
-                    {loading ? <SkeletonText width="28px" /> : aadhaarReviewPendingCount.toLocaleString('en-IN')}
-                  </div>
-                  <div className="doc-status-footer">
-                    {loading ? <SkeletonText width="65px" /> : (aadhaarReviewPendingCount === 0 ? 'सभी स्थिति दर्ज' : `${aadhaarReviewPendingCount} समीक्षा स्थिति`)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 4: राशन कार्ड उपलब्ध */}
-              <div className="doc-status-card">
-                <div className="doc-status-icon-box">
-                  <CheckCircle2 size={18} color="#2563eb" strokeWidth={2.2} />
-                </div>
-                <div className="doc-status-body">
-                  <div className="doc-status-title-hi">राशन कार्ड उपलब्ध</div>
-                  <div className="doc-status-title-en">Ration Card Available</div>
-                  <div className="doc-status-value" style={{ color: '#16a34a' }}>
-                    {loading ? <SkeletonText width="28px" /> : rationAvailableCount.toLocaleString('en-IN')}
-                  </div>
-                  <div className="doc-status-footer">
-                    {loading ? <SkeletonText width="65px" /> : `${rationAvailablePct}% राशन कार्ड दर्ज`}
-                  </div>
-                </div>
+                {selectedDocCard === 'aadhaar-not-available' && <span className="doc-card-active-tag">चयनित</span>}
               </div>
 
               {/* Card 5: राशन कार्ड नहीं है */}
-              <div className="doc-status-card">
-                <div className="doc-status-icon-box">
-                  <FileX size={18} color="#2563eb" strokeWidth={2.2} />
+              <div
+                className={`doc-status-card ${selectedDocCard === 'ration-not-available' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'ration-not-available' ? null : 'ration-not-available');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'ration-not-available' ? null : 'ration-not-available');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="राशन कार्ड नहीं है हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#ea580c' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#fff7ed' }}>
+                  <FileX size={18} color="#ea580c" strokeWidth={2.2} />
                 </div>
                 <div className="doc-status-body">
                   <div className="doc-status-title-hi">राशन कार्ड नहीं है</div>
@@ -602,10 +821,220 @@ export default function SurveyorDashboard({
                     {loading ? <SkeletonText width="65px" /> : `${rationNotAvailablePct}% बिना राशन कार्ड`}
                   </div>
                 </div>
+                {selectedDocCard === 'ration-not-available' && <span className="doc-card-active-tag">चयनित</span>}
+              </div>
+
+              {/* Card 6: दोनों उपलब्ध नहीं */}
+              <div
+                className={`doc-status-card ${selectedDocCard === 'neither' ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDocCard(selectedDocCard === 'neither' ? null : 'neither');
+                  setDocPage(1);
+                  setDocSearch('');
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedDocCard(selectedDocCard === 'neither' ? null : 'neither');
+                    setDocPage(1);
+                    setDocSearch('');
+                  }
+                }}
+                title="दोनों उपलब्ध नहीं हितग्राही फ़िल्टर करें"
+                style={{ borderLeftColor: '#be123c' }}
+              >
+                <div className="doc-status-icon-box" style={{ background: '#fff1f2' }}>
+                  <XCircle size={18} color="#be123c" strokeWidth={2.2} />
+                </div>
+                <div className="doc-status-body">
+                  <div className="doc-status-title-hi">दोनों उपलब्ध नहीं</div>
+                  <div className="doc-status-title-en">Neither Available</div>
+                  <div className="doc-status-value" style={{ color: '#be123c' }}>
+                    {loading ? <SkeletonText width="28px" /> : neitherAvailableCount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="doc-status-footer">
+                    {loading ? <SkeletonText width="65px" /> : `${neitherAvailablePct}% दोनों अनुपलब्ध`}
+                  </div>
+                </div>
+                {selectedDocCard === 'neither' && <span className="doc-card-active-tag">चयनित</span>}
               </div>
             </div>
 
+            {/* Hint when no card is selected */}
+            {!selectedDocCard && (
+              <div className="doc-click-hint-banner">
+                <Sparkles size={16} color="#166534" />
+                <span>हितग्राहियों की विस्तृत सूची देखने के लिए ऊपर दिए गए किसी भी <strong>दस्तावेज़ स्थिति कार्ड</strong> पर क्लिक करें।</span>
+              </div>
+            )}
 
+            {/* Filtered Beneficiary Details Table */}
+            {activeDocData && (
+              <section className="dashboard-table-panel panel-card dashboard-doc-detail-panel" id="doc-filtered-table-section">
+                <div className="dashboard-recent-header" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div className="dashboard-panel-title">
+                      {activeDocData.titleHi} ({activeDocData.titleEn})
+                    </div>
+                    <span className="doc-filter-count-badge" style={{ backgroundColor: activeDocData.color }}>
+                      {filteredDocBeneficiaries.length.toLocaleString('en-IN')} हितग्राही ({activeDocData.pct}%)
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div className="doc-table-search-box">
+                      <Search size={14} />
+                      <input
+                        type="text"
+                        placeholder="नाम, गाँव, मोबाइल, आधार खोजें..."
+                        value={docSearch}
+                        onChange={(e) => {
+                          setDocSearch(e.target.value);
+                          setDocPage(1);
+                        }}
+                      />
+                      {docSearch && (
+                        <button type="button" className="doc-clear-search-btn" onClick={() => setDocSearch('')}>
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="dashboard-download-btn"
+                      onClick={handleDownloadFilteredDocReport}
+                      title="एक्सेल डाउनलोड करें"
+                    >
+                      <Download size={14} />
+                      <span>Excel</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="doc-filter-clear-btn"
+                      onClick={() => {
+                        setSelectedDocCard(null);
+                        setDocSearch('');
+                      }}
+                      title="फ़िल्टर हटाएं"
+                    >
+                      <X size={14} />
+                      <span>फ़िल्टर हटाएं</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dashboard-table-wrap">
+                  <table className="dashboard-table dashboard-recent-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '45px' }}>#</th>
+                        <th>हितग्राही का नाम</th>
+                        <th>पिता/पति/मुखिया</th>
+                        <th>ब्लॉक</th>
+                        <th>ग्राम पंचायत</th>
+                        <th>गाँव</th>
+                        <th>आधार विवरण</th>
+                        <th>राशन कार्ड विवरण</th>
+                        <th>मोबाइल</th>
+                        <th className="text-right">कार्य</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedDocBeneficiaries.length === 0 ? (
+                        <tr>
+                          <td colSpan="10" className="empty-state" style={{ textAlign: 'center', padding: '2rem' }}>
+                            {docSearch ? 'खोज के अनुसार कोई हितग्राही नहीं मिला।' : 'इस श्रेणी में कोई हितग्राही नहीं है।'}
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedDocBeneficiaries.map((beneficiary, index) => {
+                          const sNo = (docPage - 1) * DOC_PAGE_SIZE + index + 1;
+                          const a = beneficiary.aadhaarInfo || {};
+                          const r = beneficiary.rationInfo || {};
+
+                          return (
+                            <tr key={beneficiary.id || `doc-row-${index}`}>
+                              <td data-label="#" className="cell-num font-semibold">{sNo}</td>
+                              <td data-label="हितग्राही का नाम" className="dashboard-beneficiary-name font-bold">
+                                {beneficiary.name}
+                                <small style={{ display: 'block', color: 'var(--neutral-500)', fontSize: '0.75rem' }}>
+                                  {beneficiary.gender ? (hindiGender[beneficiary.gender] || beneficiary.gender) : ''}
+                                  {beneficiary.age ? ` • ${beneficiary.age} वर्ष` : ''}
+                                </small>
+                              </td>
+                              <td data-label="पिता/पति/मुखिया">{beneficiary.fatherName || beneficiary.headName || '—'}</td>
+                              <td data-label="ब्लॉक">{beneficiary.block || '—'}</td>
+                              <td data-label="ग्राम पंचायत">{beneficiary.gp || '—'}</td>
+                              <td data-label="गाँव">{beneficiary.village || '—'}</td>
+                              <td data-label="आधार विवरण">
+                                {a.aadhaarNumber ? (
+                                  <span className="doc-pill success">आधार: •••• {String(a.aadhaarNumber).slice(-4)}</span>
+                                ) : a.enrollmentNumber ? (
+                                  <span className="doc-pill info">एनरोलमेंट दर्ज</span>
+                                ) : a.remark ? (
+                                  <span className="doc-pill warning">{a.remark}</span>
+                                ) : (
+                                  <span className="doc-pill danger">उपलब्ध नहीं</span>
+                                )}
+                              </td>
+                              <td data-label="राशन कार्ड विवरण">
+                                {r.rationNumber ? (
+                                  <span className="doc-pill success">राशन: {r.rationNumber}</span>
+                                ) : r.hasRationCard === 'yes' ? (
+                                  <span className="doc-pill success">उपलब्ध</span>
+                                ) : (
+                                  <span className="doc-pill danger">कार्ड नहीं है</span>
+                                )}
+                              </td>
+                              <td data-label="मोबाइल">{beneficiary.mobile || '—'}</td>
+                              <td data-label="कार्य" className="text-right">
+                                <button
+                                  type="button"
+                                  className="edit-member-btn"
+                                  onClick={() => onSelectBeneficiary(beneficiary)}
+                                >
+                                  संपादित
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredDocBeneficiaries.length > DOC_PAGE_SIZE && (
+                  <div className="report-simple-pagination" style={{ padding: '0.75rem 1rem' }}>
+                    <div className="pagination-text">
+                      प्रदर्शित <strong>{(docPage - 1) * DOC_PAGE_SIZE + 1} - {Math.min(docPage * DOC_PAGE_SIZE, filteredDocBeneficiaries.length)}</strong> / कुल <strong>{filteredDocBeneficiaries.length.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div className="pagination-buttons">
+                      <button
+                        type="button"
+                        disabled={docPage === 1}
+                        onClick={() => setDocPage((p) => Math.max(1, p - 1))}
+                      >
+                        <ChevronLeft size={16} /> पिछला
+                      </button>
+                      <span className="page-current">
+                        पृष्ठ {docPage} / {totalDocPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={docPage >= totalDocPages}
+                        onClick={() => setDocPage((p) => Math.min(totalDocPages, p + 1))}
+                      >
+                        अगला <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
           </section>
 
           <section className="dashboard-table-panel panel-card dashboard-location-panel">
@@ -668,70 +1097,6 @@ export default function SurveyorDashboard({
             </div>
           </section>
 
-          <section className="dashboard-table-panel panel-card dashboard-gp-panel">
-            <div className="dashboard-recent-header">
-              <div className="dashboard-panel-title">Gram Panchayat-wise Report</div>
-              <button
-                type="button"
-                className="dashboard-download-btn"
-                onClick={handleDownloadGpReport}
-                title="ग्राम पंचायत-वार रिपोर्ट एक्सेल डाउनलोड करें"
-              >
-                <Download size={14} />
-                <span>Download Excel</span>
-              </button>
-            </div>
-
-            <div className="dashboard-table-wrap">
-              <table className="dashboard-table dashboard-recent-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '45px' }}>#</th>
-                    <th>Gram Panchayat</th>
-                    <th>Block</th>
-                    <th className="text-right">Total Survey</th>
-                    <th className="text-right">Completed</th>
-                    <th className="text-right">Pending</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? dashboardSkeletonRows.map((row) => (
-                    <tr key={`gp-skeleton-${row}`}>
-                      <td data-label="#"><SkeletonText width="20px" /></td>
-                      <td data-label="Gram Panchayat" className="dashboard-beneficiary-name"><SkeletonText width="150px" /></td>
-                      <td data-label="Block"><SkeletonText width="110px" /></td>
-                      <td data-label="Total Survey" className="text-right"><SkeletonText width="42px" /></td>
-                      <td data-label="Completed" className="text-right"><SkeletonText width="42px" /></td>
-                      <td data-label="Pending" className="text-right"><SkeletonText width="42px" /></td>
-                    </tr>
-                  )) : (
-                    <>
-                      {gpTableRows.map((row, index) => (
-                        <tr key={row.gp}>
-                          <td data-label="#" className="cell-num font-semibold">{index + 1}</td>
-                          <td data-label="Gram Panchayat" className="dashboard-beneficiary-name">{row.gp}</td>
-                          <td data-label="Block">{row.block}</td>
-                          <td data-label="Total Survey" className="text-right strong-cell">{row.totalSurvey}</td>
-                          <td data-label="Completed" className="text-right completed-cell">{row.completed}</td>
-                          <td data-label="Pending" className="text-right pending-cell">{row.pending}</td>
-                        </tr>
-                      ))}
-                      {gpTableRows.length > 0 && (
-                        <tr className="dashboard-table-total-row">
-                          <td data-label="#">—</td>
-                          <td data-label="Gram Panchayat" className="dashboard-beneficiary-name strong-cell">Total</td>
-                          <td data-label="Block">—</td>
-                          <td data-label="Total Survey" className="text-right strong-cell">{gpTotals.totalSurvey}</td>
-                          <td data-label="Completed" className="text-right completed-cell">{gpTotals.completed}</td>
-                          <td data-label="Pending" className="text-right pending-cell">{gpTotals.pending}</td>
-                        </tr>
-                      )}
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
 
           <section className="dashboard-table-panel panel-card dashboard-village-panel">
             <div className="dashboard-recent-header">

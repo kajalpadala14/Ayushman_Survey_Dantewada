@@ -3,8 +3,62 @@
  */
 
 /**
+ * Checks if Aadhaar is available for a beneficiary.
+ * Returns true if valid 12-digit Aadhaar number or type === 'aadhaar' exists.
+ * Returns false if remark is recorded, enrollment number only, or explicitly no Aadhaar.
+ */
+export function isAadhaarAvailable(b) {
+  if (!b) return false;
+  const a = b.aadhaarInfo || {};
+
+  // Explicit remark, enrollment slip, or marked false means Aadhaar card is not yet available
+  if (a.type === 'remark' || Boolean(a.remark) || a.type === 'enrollment' || b.hasAadhaar === false) {
+    return false;
+  }
+
+  const num = String(a.aadhaarNumber || b.aadhaarNumber || '').replace(/\D/g, '');
+  if (a.type === 'aadhaar' || num.length === 12 || b.hasAadhaar === true) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if Ration Card is available for a beneficiary.
+ * Returns true if ration card number exists (>=10 digits) or hasRationCard === 'yes'.
+ * Returns false if explicitly marked no ration card.
+ */
+export function isRationAvailable(b) {
+  if (!b) return false;
+  const r = b.rationInfo || {};
+
+  // Explicitly marked as not available
+  if (
+    r.hasRationCard === 'no' ||
+    r.rationNotAvailable === 'हाँ' ||
+    String(r.rationNotAvailable).toLowerCase() === 'yes' ||
+    b.hasRationCard === false
+  ) {
+    return false;
+  }
+
+  // Ration card number check (at least 10 digits)
+  const num = String(r.rationNumber || b.rationNumber || '').replace(/\D/g, '');
+  if (num.length >= 10) return true;
+
+  if (r.hasRationCard === 'yes' || b.hasRationCard === true || b.hasRationCard === 'yes') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Calculates documentation status (दस्तावेज़ स्थिति) metrics and data quality stats
  * from an assigned list of beneficiaries.
+ *
+ * Base: ONLY Completed surveys (b.status === 'Completed' || b.status === 'Issue Found').
  *
  * @param {Array} assignedList - List of beneficiaries
  * @returns {Object} Documentation status & data quality metrics
@@ -15,20 +69,65 @@ export function calculateDocumentationStatus(assignedList = []) {
   );
   const completedCount = completedList.length;
 
-  // 1. Aadhaar Available (आधार उपलब्ध)
-  const aadhaarAvailableCount = completedList.filter((b) => {
-    const a = b.aadhaarInfo || {};
-    const num = String(a.aadhaarNumber || b.aadhaarNumber || '').replace(/\D/g, '');
-    return a.type === 'aadhaar' || num.length === 12 || b.hasAadhaar === true;
-  }).length;
+  let bothAvailableCount = 0;
+  let onlyAadhaarCount = 0;
+  let onlyRationCount = 0;
+  let neitherAvailableCount = 0;
+  let aadhaarNotAvailableCount = 0;
+  let rationNotAvailableCount = 0;
 
-  // 2. Aadhaar Not Available (आधार उपलब्ध नहीं)
-  const aadhaarNotAvailableCount = completedList.filter((b) => {
-    const a = b.aadhaarInfo || {};
-    return a.type === 'remark' || Boolean(a.remark) || b.hasAadhaar === false;
-  }).length;
+  const bothAvailableList = [];
+  const onlyAadhaarList = [];
+  const onlyRationList = [];
+  const neitherAvailableList = [];
+  const aadhaarNotAvailableList = [];
+  const rationNotAvailableList = [];
 
-  // 3. Aadhaar Review/Pending (आधार स्थिति समीक्षा)
+  for (const b of completedList) {
+    const hasA = isAadhaarAvailable(b);
+    const hasR = isRationAvailable(b);
+
+    if (hasA && hasR) {
+      bothAvailableCount++;
+      bothAvailableList.push(b);
+    } else if (hasA && !hasR) {
+      onlyAadhaarCount++;
+      onlyAadhaarList.push(b);
+    } else if (!hasA && hasR) {
+      onlyRationCount++;
+      onlyRationList.push(b);
+    } else {
+      neitherAvailableCount++;
+      neitherAvailableList.push(b);
+    }
+
+    if (!hasA) {
+      aadhaarNotAvailableCount++;
+      aadhaarNotAvailableList.push(b);
+    }
+    if (!hasR) {
+      rationNotAvailableCount++;
+      rationNotAvailableList.push(b);
+    }
+  }
+
+  // Percentages strictly relative to completed surveys
+  const toPct = (count) =>
+    completedCount > 0 ? ((count / completedCount) * 100).toFixed(1) : '0.0';
+
+  const bothAvailablePct = toPct(bothAvailableCount);
+  const onlyAadhaarPct = toPct(onlyAadhaarCount);
+  const onlyRationPct = toPct(onlyRationCount);
+  const neitherAvailablePct = toPct(neitherAvailableCount);
+  const aadhaarNotAvailablePct = toPct(aadhaarNotAvailableCount);
+  const rationNotAvailablePct = toPct(rationNotAvailableCount);
+
+  // Backward compatibility fields
+  const aadhaarAvailableCount = bothAvailableCount + onlyAadhaarCount;
+  const aadhaarAvailablePct = toPct(aadhaarAvailableCount);
+  const rationAvailableCount = bothAvailableCount + onlyRationCount;
+  const rationAvailablePct = toPct(rationAvailableCount);
+
   const aadhaarReviewPendingCount = completedList.filter((b) => {
     const a = b.aadhaarInfo || {};
     return (
@@ -37,48 +136,6 @@ export function calculateDocumentationStatus(assignedList = []) {
       (!a.type && !a.aadhaarNumber && !a.enrollmentNumber && !a.remark)
     );
   }).length;
-
-  // 4. Ration Card Available (राशन कार्ड उपलब्ध)
-  const rationAvailableCount = completedList.filter((b) => {
-    const r = b.rationInfo || {};
-    const num = String(r.rationNumber || b.rationNumber || '').trim();
-    return (
-      r.hasRationCard === 'yes' ||
-      num.length >= 10 ||
-      b.hasRationCard === true ||
-      b.hasRationCard === 'yes'
-    );
-  }).length;
-
-  // 5. Ration Not Available (राशन कार्ड नहीं है)
-  const rationNotAvailableCount = completedList.filter((b) => {
-    const r = b.rationInfo || {};
-    return (
-      r.hasRationCard === 'no' ||
-      (!r.rationNumber &&
-        r.hasRationCard !== 'yes' &&
-        b.hasRationCard !== true &&
-        b.hasRationCard !== 'yes')
-    );
-  }).length;
-
-  // Percentages relative to completed surveys
-  const aadhaarAvailablePct =
-    completedCount > 0
-      ? ((aadhaarAvailableCount / completedCount) * 100).toFixed(1)
-      : '0.0';
-  const aadhaarNotAvailablePct =
-    completedCount > 0
-      ? ((aadhaarNotAvailableCount / completedCount) * 100).toFixed(1)
-      : '0.0';
-  const rationAvailablePct =
-    completedCount > 0
-      ? ((rationAvailableCount / completedCount) * 100).toFixed(1)
-      : '0.0';
-  const rationNotAvailablePct =
-    completedCount > 0
-      ? ((rationNotAvailableCount / completedCount) * 100).toFixed(1)
-      : '0.0';
 
   // Data Quality Metrics
   const aadhaarPendingQuality = completedList.filter((b) => {
@@ -99,15 +156,40 @@ export function calculateDocumentationStatus(assignedList = []) {
   return {
     completedList,
     completedCount,
-    aadhaarAvailableCount,
-    aadhaarAvailablePct,
+
+    // 6 primary categories
+    bothAvailableCount,
+    bothAvailablePct,
+    bothAvailableList,
+
+    onlyAadhaarCount,
+    onlyAadhaarPct,
+    onlyAadhaarList,
+
+    onlyRationCount,
+    onlyRationPct,
+    onlyRationList,
+
+    neitherAvailableCount,
+    neitherAvailablePct,
+    neitherAvailableList,
+
     aadhaarNotAvailableCount,
     aadhaarNotAvailablePct,
+    aadhaarNotAvailableList,
+
+    rationNotAvailableCount,
+    rationNotAvailablePct,
+    rationNotAvailableList,
+
+    // Legacy fields
+    aadhaarAvailableCount,
+    aadhaarAvailablePct,
     aadhaarReviewPendingCount,
     rationAvailableCount,
     rationAvailablePct,
-    rationNotAvailableCount,
-    rationNotAvailablePct,
+
+    // Data quality
     aadhaarPendingQuality,
     rationPendingQuality,
     mobileMissingQuality

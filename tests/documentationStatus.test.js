@@ -184,3 +184,70 @@ test('calculateDocumentationStatus - computes Data Quality metrics accurately', 
   assert.equal(result.rationPendingQuality, 1);
   assert.equal(result.mobileMissingQuality, 1);
 });
+
+test('calculateDocumentationStatus - 6 categories, base on completed surveys only, and 100% partition validation', () => {
+  const dataset = [
+    // 1. Pending survey (MUST be ignored from base count and all categories)
+    { id: 'P-1', status: 'Pending', aadhaarInfo: { type: 'aadhaar', aadhaarNumber: '111122223333' }, rationInfo: { hasRationCard: 'yes', rationNumber: '9999888877' } },
+    
+    // 2. Both Available (Aadhaar + Ration) -> 3 records
+    { id: 'BOTH-1', status: 'Completed', aadhaarInfo: { type: 'aadhaar', aadhaarNumber: '123456789012' }, rationInfo: { hasRationCard: 'yes', rationNumber: '123456789012' } },
+    { id: 'BOTH-2', status: 'Completed', aadhaarInfo: { aadhaarNumber: '998877665544' }, rationInfo: { hasRationCard: 'yes', rationNumber: '987654321012' } },
+    { id: 'BOTH-3', status: 'Issue Found', aadhaarInfo: { type: 'aadhaar', aadhaarNumber: '556677889900' }, rationInfo: { hasRationCard: 'yes', rationNumber: '1122334455' } },
+
+    // 3. Only Aadhaar Available -> 2 records
+    { id: 'ONLY-A-1', status: 'Completed', aadhaarInfo: { type: 'aadhaar', aadhaarNumber: '112233445566' }, rationInfo: { hasRationCard: 'no' } },
+    { id: 'ONLY-A-2', status: 'Completed', aadhaarInfo: { aadhaarNumber: '665544332211' }, rationInfo: { rationNotAvailable: 'हाँ' } },
+
+    // 4. Only Ration Available -> 4 records
+    { id: 'ONLY-R-1', status: 'Completed', aadhaarInfo: { type: 'remark', remark: 'मृत्यु' }, rationInfo: { hasRationCard: 'yes', rationNumber: '4455667788' } },
+    { id: 'ONLY-R-2', status: 'Completed', aadhaarInfo: { type: 'enrollment', enrollmentNumber: '1234567890123456789012345678' }, rationInfo: { hasRationCard: 'yes', rationNumber: '3344556677' } },
+    { id: 'ONLY-R-3', status: 'Completed', aadhaarInfo: { remark: 'फिंगरप्रिंट नहीं आ रहा' }, rationInfo: { hasRationCard: 'yes', rationNumber: '2233445566' } },
+    { id: 'ONLY-R-4', status: 'Completed', aadhaarInfo: { type: 'remark', remark: 'स्थानांतरित' }, rationInfo: { hasRationCard: 'yes', rationNumber: '7788990011' } },
+
+    // 5. Neither Available -> 1 record
+    { id: 'NEITHER-1', status: 'Completed', aadhaarInfo: { type: 'remark', remark: 'मृत्यु' }, rationInfo: { hasRationCard: 'no' } }
+  ];
+
+  const metrics = calculateDocumentationStatus(dataset);
+
+  // Rule 1: Base is strictly completed surveys (3 + 2 + 4 + 1 = 10 records, P-1 ignored)
+  assert.equal(metrics.completedCount, 10);
+
+  // Rule 2: Partition counts
+  assert.equal(metrics.bothAvailableCount, 3);
+  assert.equal(metrics.bothAvailablePct, '30.0');
+  assert.equal(metrics.bothAvailableList.length, 3);
+
+  assert.equal(metrics.onlyAadhaarCount, 2);
+  assert.equal(metrics.onlyAadhaarPct, '20.0');
+  assert.equal(metrics.onlyAadhaarList.length, 2);
+
+  assert.equal(metrics.onlyRationCount, 4);
+  assert.equal(metrics.onlyRationPct, '40.0');
+  assert.equal(metrics.onlyRationList.length, 4);
+
+  assert.equal(metrics.neitherAvailableCount, 1);
+  assert.equal(metrics.neitherAvailablePct, '10.0');
+  assert.equal(metrics.neitherAvailableList.length, 1);
+
+  // Individual counts:
+  // Aadhaar Not Available = onlyRation (4) + neither (1) = 5 (50.0%)
+  assert.equal(metrics.aadhaarNotAvailableCount, 5);
+  assert.equal(metrics.aadhaarNotAvailablePct, '50.0');
+  assert.equal(metrics.aadhaarNotAvailableList.length, 5);
+
+  // Ration Not Available = onlyAadhaar (2) + neither (1) = 3 (30.0%)
+  assert.equal(metrics.rationNotAvailableCount, 3);
+  assert.equal(metrics.rationNotAvailablePct, '30.0');
+  assert.equal(metrics.rationNotAvailableList.length, 3);
+
+  // Rule 3: Exact 100% Partition Validation:
+  // (bothAvailable + onlyAadhaar + onlyRation + neitherAvailable) === completedCount
+  const partitionSum = metrics.bothAvailableCount + metrics.onlyAadhaarCount + metrics.onlyRationCount + metrics.neitherAvailableCount;
+  assert.equal(partitionSum, metrics.completedCount);
+
+  const pctSum = Number(metrics.bothAvailablePct) + Number(metrics.onlyAadhaarPct) + Number(metrics.onlyRationPct) + Number(metrics.neitherAvailablePct);
+  assert.equal(pctSum, 100.0);
+});
+
