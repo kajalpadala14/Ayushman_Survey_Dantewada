@@ -30,7 +30,7 @@ const hindiGender = {
 
 const statusHindi = {
   Pending: 'खाली',
-  Completed: 'भरा',
+  Completed: 'संपादित',
   'Issue Found': 'समस्या'
 };
 

@@ -7,6 +7,7 @@ import ReportsDashboard from './components/ReportsDashboard';
 import SurveyorDashboard from './components/SurveyorDashboard';
 import SurveyWizard from './components/SurveyWizard';
 import { getISTDateTimeString, getGoogleTimeDate } from './utils/dateTime';
+import { mergeWithLocalSurveys, saveLocalSurvey } from './utils/surveyStore';
 
 export default function App() {
   const [cachedBootstrapData] = useState(() => readCachedBootstrapData());
@@ -35,7 +36,9 @@ export default function App() {
   }, [theme]);
 
   const [beneficiaries, setBeneficiaries] = useState(
-    Array.isArray(cachedBootstrapData?.beneficiaries) ? cachedBootstrapData.beneficiaries : []
+    Array.isArray(cachedBootstrapData?.beneficiaries)
+      ? mergeWithLocalSurveys(cachedBootstrapData.beneficiaries)
+      : []
   );
   const [parameters, setParameters] = useState(
     Array.isArray(cachedBootstrapData?.parameters) ? cachedBootstrapData.parameters : []
@@ -62,7 +65,8 @@ export default function App() {
 
     try {
       const data = await getBootstrapData();
-      setBeneficiaries(Array.isArray(data?.beneficiaries) ? data.beneficiaries : []);
+      const rawBeneficiaries = Array.isArray(data?.beneficiaries) ? data.beneficiaries : [];
+      setBeneficiaries(mergeWithLocalSurveys(rawBeneficiaries));
       setParameters(Array.isArray(data?.parameters) ? data.parameters : []);
       setIssueTypes(Array.isArray(data?.issues) ? data.issues : []);
       setUsers(Array.isArray(data?.users) ? data.users : []);
@@ -140,8 +144,14 @@ export default function App() {
       aadhaarInfo,
       rationInfo,
       mobileInfo,
-      parameterResponses: responses
+      parameterResponses: responses,
+      submittedBy: currentUser.id
     };
+
+    saveLocalSurvey({
+      beneficiaryId,
+      ...beneficiaryPatch
+    });
 
     setBeneficiaries((previous) =>
       previous.map((b) => (b.id === beneficiaryId ? { ...b, ...beneficiaryPatch } : b))
@@ -274,6 +284,7 @@ export default function App() {
           {renderDataState() || (selectedBeneficiary ? (
             <div className="view-panel survey-view-panel" style={{ marginTop: '0.5rem' }}>
               <SurveyWizard
+                key={selectedBeneficiary.id}
                 beneficiary={selectedBeneficiary}
                 parameters={parameters}
                 issueTypes={issueTypes}

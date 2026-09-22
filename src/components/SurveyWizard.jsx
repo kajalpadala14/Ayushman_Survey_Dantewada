@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  CheckCircle, AlertTriangle, ArrowLeft, Check
+  CheckCircle, AlertTriangle, ArrowLeft, Check, CheckCircle2, Clock
 } from 'lucide-react';
 import { appConfig } from '../config';
 import { formatSurveyDateTime } from '../utils/dateTime';
@@ -21,6 +21,72 @@ const aadhaarRemarkOptions = [
   'नया वोटर आईडी कार्ड उपलब्ध है परंतु एनरोलमेंट नहीं हुआ है।'
 ];
 
+const getInitialAadhaarInfo = (b) => {
+  const info = b?.aadhaarInfo || {};
+  let num = info.aadhaarNumber || b?.aadhaarNumber || '';
+  let enroll = info.enrollmentNumber || b?.enrollmentNumber || '';
+  let rem = info.remark || b?.aadhaarRemark || '';
+  let type = info.type;
+
+  num = String(num || '').replace(/\D/g, '').slice(0, 12);
+  enroll = String(enroll || '').replace(/\D/g, '').slice(0, 28);
+  rem = String(rem || '').trim();
+
+  if (!type || type === 'unknown') {
+    if (num) type = 'aadhaar';
+    else if (enroll) type = 'enrollment';
+    else if (rem) type = 'remark';
+    else type = '';
+  }
+
+  return {
+    type: type || '',
+    aadhaarNumber: num,
+    enrollmentNumber: enroll,
+    remark: rem
+  };
+};
+
+const getInitialRationInfo = (b) => {
+  const info = b?.rationInfo || {};
+  let has = info.hasRationCard ?? b?.hasRationCard;
+  let num = info.rationNumber || b?.rationNumber || '';
+  const noCard = info.rationNotAvailable || b?.rationNotAvailable;
+
+  num = String(num || '').replace(/\D/g, '').slice(0, 12);
+
+  if (has === 'yes' || has === 'no') {
+    // already resolved
+  } else if (num) {
+    has = 'yes';
+  } else if (noCard === 'हाँ' || String(noCard).toLowerCase() === 'yes') {
+    has = 'no';
+  } else if (has === 'unknown' || !has) {
+    has = num ? 'yes' : '';
+  }
+
+  return {
+    hasRationCard: has || '',
+    rationNumber: num
+  };
+};
+
+const getInitialMobileInfo = (b) => {
+  const info = b?.mobileInfo || {};
+  const num = info.mobileNumber || b?.mobile || '';
+  return {
+    mobileNumber: String(num || '').replace(/\D/g, '').slice(0, 10)
+  };
+};
+
+const getInitialResponses = (b) => {
+  return b?.parameterResponses || {
+    P1: { status: '', issueType: '', remark: '', proofName: '' },
+    P2: { status: '', issueType: '', remark: '', proofName: '' },
+    P3: { status: '', issueType: '', remark: '', proofName: '' }
+  };
+};
+
 export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSubmitSurvey, onCancel }) {
   const [step, setStep] = useState(1);
   const [localSurveyId] = useState(() => `${appConfig.surveyIdPrefix}-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`);
@@ -28,37 +94,21 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Parameter state: { p1: { status: '', issueType: '', remark: '', proofName: '' }, ... }
-  const [responses, setResponses] = useState(
-    beneficiary.parameterResponses || {
-      P1: { status: '', issueType: '', remark: '', proofName: '' },
-      P2: { status: '', issueType: '', remark: '', proofName: '' },
-      P3: { status: '', issueType: '', remark: '', proofName: '' }
-    }
-  );
-
-  const [aadhaarInfo, setAadhaarInfo] = useState(
-    beneficiary.aadhaarInfo || {
-      type: '',
-      aadhaarNumber: '',
-      enrollmentNumber: '',
-      remark: ''
-    }
-  );
-
-  const [rationInfo, setRationInfo] = useState(
-    beneficiary.rationInfo || {
-      hasRationCard: '',
-      rationNumber: ''
-    }
-  );
-
-  const [mobileInfo, setMobileInfo] = useState(
-    beneficiary.mobileInfo || {
-      mobileNumber: ''
-    }
-  );
-
+  const [responses, setResponses] = useState(() => getInitialResponses(beneficiary));
+  const [aadhaarInfo, setAadhaarInfo] = useState(() => getInitialAadhaarInfo(beneficiary));
+  const [rationInfo, setRationInfo] = useState(() => getInitialRationInfo(beneficiary));
+  const [mobileInfo, setMobileInfo] = useState(() => getInitialMobileInfo(beneficiary));
   const [validationError, setValidationError] = useState('');
+
+  useEffect(() => {
+    setResponses(getInitialResponses(beneficiary));
+    setAadhaarInfo(getInitialAadhaarInfo(beneficiary));
+    setRationInfo(getInitialRationInfo(beneficiary));
+    setMobileInfo(getInitialMobileInfo(beneficiary));
+    setStep(1);
+    setValidationError('');
+    setSubmittedSurvey(null);
+  }, [beneficiary?.id]);
 
   const handleStatusChange = (paramId, newStatus) => {
     setResponses(prev => ({
@@ -252,12 +302,12 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
   const hasIssue = false;
   const overallResultText = 'VERIFIED';
   const isAadhaarReady =
-    (aadhaarInfo.type === 'aadhaar' && aadhaarInfo.aadhaarNumber.length === 12) ||
-    (aadhaarInfo.type === 'enrollment' && aadhaarInfo.enrollmentNumber.length === 28) ||
+    (aadhaarInfo.type === 'aadhaar' && (aadhaarInfo.aadhaarNumber || '').replace(/\D/g, '').length === 12) ||
+    (aadhaarInfo.type === 'enrollment' && (aadhaarInfo.enrollmentNumber || '').replace(/\D/g, '').length === 28) ||
     (aadhaarInfo.type === 'remark' && Boolean(aadhaarInfo.remark));
   const isRationReady = rationInfo.hasRationCard === 'no' ||
-    (rationInfo.hasRationCard === 'yes' && rationInfo.rationNumber.replace(/\D/g, '').length === 12);
-  const isMobileReady = mobileInfo.mobileNumber.replace(/\D/g, '').length === 10;
+    (rationInfo.hasRationCard === 'yes' && (rationInfo.rationNumber || '').replace(/\D/g, '').length === 12);
+  const isMobileReady = (mobileInfo.mobileNumber || '').replace(/\D/g, '').length === 10;
 
   return (
     <div className="survey-wizard-shell" style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -324,10 +374,53 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
       {/* STEP 1: BENEFICIARY DETAILS */}
       {step === 1 && (
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--neutral-200)' }}>
-            <h3 style={{ fontSize: '1.15rem', color: 'var(--neutral-800)' }}>Beneficiary Information</h3>
-            <span className="badge badge-warning">Survey Status: Pending</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--neutral-200)', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--neutral-800)', margin: 0 }}>Beneficiary Information (सदस्य विवरण)</h3>
+            <div>
+              {beneficiary.status === 'Completed' ? (
+                <span className="badge badge-success" style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: '700', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} />
+                  <span>सर्वे स्थिति: संपादित / सत्यापित (Completed)</span>
+                </span>
+              ) : beneficiary.status === 'Issue Found' ? (
+                <span className="badge badge-danger" style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontWeight: '700', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={16} />
+                  <span>सर्वे स्थिति: समस्या दर्ज (Issue Found)</span>
+                </span>
+              ) : (
+                <span className="badge badge-warning" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', fontWeight: '700', padding: '6px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={16} />
+                  <span>सर्वे स्थिति: लंबित (Pending)</span>
+                </span>
+              )}
+            </div>
           </div>
+
+          {beneficiary.status === 'Completed' && (
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '12px',
+              padding: '0.85rem 1rem',
+              marginBottom: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              color: '#166534'
+            }}>
+              <CheckCircle2 size={22} style={{ color: '#16a34a', flexShrink: 0 }} />
+              <div style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
+                <strong style={{ fontSize: '0.95rem' }}>यह सदस्य पूर्व में सत्यापित / संपादित हो चुका है।</strong>
+                <div style={{ fontSize: '0.82rem', color: '#15803d', marginTop: '2px' }}>
+                  सर्वे आईडी: <strong>{beneficiary.surveyId || 'उपलब्ध है'}</strong> | दिनांक: <strong>{beneficiary.surveyDate || 'उपलब्ध है'}</strong>
+                  {beneficiary.submittedBy ? ` | सर्वेक्षक: ${beneficiary.submittedBy}` : ''}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#166534', marginTop: '2px' }}>
+                  आप नीचे दिए गए बटन से पूर्व दर्ज जानकारी देख सकते हैं या आवश्यकतानुसार पुनः संपादित (Edit / Update) कर सकते हैं।
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
             <div>
@@ -374,7 +467,7 @@ export default function SurveyWizard({ beneficiary, parameters, issueTypes, onSu
 
           <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
             <button className="btn btn-primary" onClick={handleNext}>
-              सत्यापन शुरू करें &rarr;
+              {beneficiary.status === 'Completed' ? 'जानकारी देखें / संपादित करें \u2192' : 'सत्यापन शुरू करें \u2192'}
             </button>
           </div>
         </div>
